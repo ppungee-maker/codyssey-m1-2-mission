@@ -17,15 +17,22 @@ from fastapi.responses import JSONResponse
 from core.config import settings
 from repositories import store
 from routers import chat, conversations, data
-from seed import seed_if_empty
+from seed import seed_from_csv
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """시작할 때 저장소가 비어 있으면 시드 CSV(502건)를 넣는다 — 메모리 저장소는 재시작마다
-    비고, Firestore 는 첫 배포 때 한 번만 채워진다(이미 있으면 건너뜀)."""
-    if settings.seed_on_startup:
-        count = seed_if_empty(store)
+    """시작할 때 저장소에 실제로 접속해본다 — FirestoreStore 생성자는 네트워크 호출을
+    안 해서(자격증명 JSON 파싱만 함), list_data() 같은 실제 요청 전까지는 틀린 키도
+    "성공"처럼 보인다. SEED_ON_STARTUP=false 라도 이 확인은 항상 한다 — repositories/
+    __init__.py의 "틀린 키면 서버가 안 뜬다" 약속을 여기서도 지키려는 것.
+
+    비어 있으면(그리고 SEED_ON_STARTUP이 켜져 있으면) 시드 CSV(502건)를 넣는다 —
+    메모리 저장소는 재시작마다 비고, Firestore는 첫 배포 때 한 번만 채워진다.
+    """
+    existing = store.list_data()
+    if settings.seed_on_startup and not existing:
+        count = seed_from_csv(store)
         if count:
             print(f"[시딩] {count}건 자동 적재")
     yield

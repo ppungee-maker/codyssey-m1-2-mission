@@ -55,6 +55,27 @@ class FirestoreStore(Store):
         doc_ref.set(row)
         return {"id": doc_ref.id, **row}
 
+    _BATCH_LIMIT = 500  # Firestore 일괄쓰기(batch) 한 번에 담을 수 있는 최대 작업 수
+
+    def bulk_add_data(self, rows: list[tuple[date_type, float, str | None]]) -> int:
+        """Firestore batch로 묶어 커밋한다 — 502건을 add_data로 한 줄씩 왕복하면
+        콜드스타트 직후 첫 기동이 그만큼 느려진다(네트워크 왕복 502번 vs 2번)."""
+        count = 0
+        for i in range(0, len(rows), self._BATCH_LIMIT):
+            chunk = rows[i : i + self._BATCH_LIMIT]
+            batch = self._db.batch()
+            for date, value, memo in chunk:
+                batch.set(
+                    self._data_col.document(),
+                    {
+                        "date": date.isoformat(), "value": value, "memo": memo,
+                        "created_at": datetime.now(timezone.utc),
+                    },
+                )
+            batch.commit()
+            count += len(chunk)
+        return count
+
     def list_data(self) -> list[dict]:
         docs = self._data_col.order_by("date").stream()
         return [{"id": d.id, **d.to_dict()} for d in docs]

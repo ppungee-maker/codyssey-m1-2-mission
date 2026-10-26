@@ -16,6 +16,16 @@ class Store(ABC):
     @abstractmethod
     def add_data(self, date: date_type, value: float, memo: str | None) -> dict: ...
 
+    def bulk_add_data(self, rows: list[tuple[date_type, float, str | None]]) -> int:
+        """add_data를 여러 건 한 번에 넣는다 — 시드 적재(502건)처럼 건수가 많을 때 씀.
+
+        기본 구현은 add_data를 순차 호출(메모리 저장소엔 왕복 비용이 없어 그대로 충분).
+        일괄쓰기가 있는 저장소(Firestore 등)는 오버라이드해서 네트워크 왕복을 줄인다.
+        """
+        for date, value, memo in rows:
+            self.add_data(date=date, value=value, memo=memo)
+        return len(rows)
+
     @abstractmethod
     def list_data(self) -> list[dict]: ...
 
