@@ -23,10 +23,17 @@ TITLE_MAX = 100
 CONVERSATION_MAX_BYTES = 900_000
 
 
+# Firestore 는 본문 말고도 메시지마다 필드 이름(role·content)·값 끝 표시·맵 구조를 센다.
+# 짧은 메시지가 아주 많으면 그 몫이 커서, 본문만 세면 한도를 넘긴 뒤에야 저장이 실패한다.
+MESSAGE_OVERHEAD_BYTES = 64
+
+
 def conversation_bytes(messages) -> int:
-    """메시지 본문의 UTF-8 크기 합(한글 1자 = 3바이트). dict·모델 둘 다 받는다."""
+    """Firestore 에 저장될 메시지 배열 크기의 넉넉한 추정 — 본문 UTF-8(한글 1자 = 3바이트)
+    + 메시지당 MESSAGE_OVERHEAD_BYTES. dict·모델 둘 다 받는다."""
     return sum(
-        len((m["content"] if isinstance(m, dict) else m.content).encode()) for m in messages
+        len((m["content"] if isinstance(m, dict) else m.content).encode()) + MESSAGE_OVERHEAD_BYTES
+        for m in messages
     )
 
 DateField = Annotated[date_type, Field(ge=date_type(1900, 1, 1), le=date_type(2100, 12, 31))]

@@ -281,8 +281,13 @@ $("chat-form").addEventListener("submit", async (e) => {
     if (generation === viewGeneration) {
       currentConversationId = resp.conversation_id;
       loading.replaceWith(bubble("assistant", resp.answer));
+      await refreshConversationList();
+    } else if (currentConversationId === resp.conversation_id) {
+      // 다른 대화에 갔다가 이 대화로 돌아와 있다 — 저장된 답까지 다시 불러온다
+      await loadConversation(resp.conversation_id);
+    } else {
+      await refreshConversationList();
     }
-    await refreshConversationList();
   } catch (err) {
     loading.textContent = `오류: ${err.message}`;
     loading.classList.remove("loading");
