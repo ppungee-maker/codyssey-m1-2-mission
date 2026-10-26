@@ -29,8 +29,16 @@ def _trend(values: list[float]) -> tuple[str, str]:
     window = max(3, len(values) // 5)
     recent, before = values[-window:], values[:-window]
     recent_avg, before_avg = mean(recent), mean(before)
-    ratio = (recent_avg - before_avg) / before_avg if before_avg else 0.0
-    detail = f"최근 {window}건 평균({recent_avg:.2f})이 이전 대비 {ratio * 100:+.1f}%"
+    delta = recent_avg - before_avg
+    if before_avg:
+        # 기준이 음수여도 방향이 뒤집히지 않게 절댓값으로 나눈다(-10 → -5 는 증가)
+        ratio = delta / abs(before_avg)
+        detail = f"최근 {window}건 평균({recent_avg:.2f})이 이전 대비 {ratio * 100:+.1f}%"
+    else:
+        # 이전 평균이 0 이면 비율을 못 낸다 — 값들의 크기에 견준 차이로 판단한다
+        scale = max(abs(v) for v in values) or 1.0
+        ratio = delta / scale
+        detail = f"최근 {window}건 평균({recent_avg:.2f})이 이전 평균(0)보다 {delta:+.2f}"
     if ratio > TREND_THRESHOLD:
         return "증가", detail
     if ratio < -TREND_THRESHOLD:

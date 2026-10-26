@@ -46,3 +46,14 @@ def test_too_few_points():
 def test_summary_endpoint_days_param(client):
     assert client.get("/api/data/summary?days=30").json()["basis"] == "최근 30일"
     assert client.get("/api/data/summary?days=0").status_code == 422
+
+
+def test_trend_with_zero_baseline():
+    assert summarize(_rows([0] * 8 + [5] * 2)).trend == "증가"
+    assert summarize(_rows([0] * 10)).trend == "유지"
+
+
+def test_trend_with_negative_values_keeps_direction():
+    # -10 → -5 는 올라간 것(증가). 음수로 나누면 「감소」로 뒤집혔다.
+    assert summarize(_rows([-10] * 8 + [-5] * 2)).trend == "증가"
+    assert summarize(_rows([-5] * 8 + [-10] * 2)).trend == "감소"
