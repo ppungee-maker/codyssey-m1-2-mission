@@ -7,27 +7,45 @@ Swagger UI: http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core.config import settings
-from routers import chat, conversations, data
 from repositories import store
+from routers import chat, conversations, data
+from seed import seed_if_empty
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """시작할 때 저장소가 비어 있으면 시드 CSV(502건)를 넣는다 — 메모리 저장소는 재시작마다
+    비고, Firestore 는 첫 배포 때 한 번만 채워진다(이미 있으면 건너뜀)."""
+    if settings.seed_on_startup:
+        count = seed_if_empty(store)
+        if count:
+            print(f"[시딩] {count}건 자동 적재")
+    yield
+
 
 app = FastAPI(
     title="AI 비서 API",
     description="내 데이터를 이해하는 AI 비서 — 데이터 CRUD, 요약, 대화 기록, GPT 컨텍스트 주입 챗봇",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
+# 프론트(Vercel)와 백엔드(Render)는 주소가 달라서 브라우저가 CORS 로 막는다 — 허용할 프론트
+# 주소를 CORS_ORIGINS 로 받는다. 쿠키·로그인이 없으니 credentials 는 끈다(* 와 같이 켜면 위험).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -44,19 +62,6 @@ async def validation_error(request: Request, exc: RequestValidationError) -> JSO
 app.include_router(data.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
-
-
-@app.on_event("startup")
-def seed_on_startup() -> None:
-    """MemoryStore(로컬 개발 기본값)는 프로세스 메모리라 시작할 때마다 비어있다 —
-    앱을 켜자마자 CRUD/요약/챗봇을 바로 시연할 수 있게 자동으로 시딩한다.
-    Firestore(배포 환경)는 데이터가 영속되므로 이미 있으면 건너뛴다.
-    """
-    from seed import seed_if_empty
-
-    count = seed_if_empty(store)
-    if count:
-        print(f"[시딩] {count}건 자동 적재")
 
 
 @app.get("/", tags=["health"])
