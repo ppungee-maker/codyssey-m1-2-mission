@@ -114,7 +114,7 @@ function editRow(r) {
       class: "edit-form",
       onsubmit: guarded(async (e) => {
         e.preventDefault();
-        await api.updateData(r.id, { date: date.value, value: Number(value.value), memo: memo.value.trim() });
+        await api.updateData(r.id, { date: date.value, value: Number(value.value), memo: memo.value.trim() || null });
         editingId = null;
         await refreshData();
       }),

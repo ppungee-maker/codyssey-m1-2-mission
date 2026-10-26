@@ -50,3 +50,16 @@ def test_422_lists_field_and_message(client):
     detail = client.post("/api/data", json={"date": "2026-10-01"}).json()["detail"]
     assert detail[0]["loc"][-1] == "value" and detail[0]["msg"]
     assert "input" not in detail[0]
+
+
+def test_update_can_clear_memo_but_keeps_unsent_fields(client):
+    row = client.post("/api/data", json={"date": "2026-10-01", "value": 5, "memo": "지울 메모"}).json()
+    r = client.put(f"/api/data/{row['id']}", json={"memo": None})
+    assert r.status_code == 200
+    assert r.json()["memo"] is None and r.json()["value"] == 5
+
+
+def test_update_rejects_null_date_or_value(client):
+    data_id = client.get("/api/data").json()[0]["id"]
+    assert client.put(f"/api/data/{data_id}", json={"value": None}).status_code == 422
+    assert client.put(f"/api/data/{data_id}", json={"date": None}).status_code == 422

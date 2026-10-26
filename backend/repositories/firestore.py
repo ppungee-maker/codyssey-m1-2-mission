@@ -67,8 +67,7 @@ class FirestoreStore(Store):
         doc_ref = self._data_col.document(data_id)
         if not doc_ref.get().exists:
             return None
-        updates = {k: (v.isoformat() if isinstance(v, date_type) else v)
-                   for k, v in fields.items() if v is not None}
+        updates = {k: (v.isoformat() if isinstance(v, date_type) else v) for k, v in fields.items()}
         doc_ref.update(updates)
         doc = doc_ref.get()
         return {"id": doc.id, **doc.to_dict()}
