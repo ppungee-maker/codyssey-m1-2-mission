@@ -7,8 +7,10 @@ Swagger UI: http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from core.config import settings
 from routers import chat, conversations, data
@@ -27,6 +29,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """422 응답에 사용자가 보낸 값(input)을 되돌려 주지 않는다 — 기본 응답은 입력을 그대로
+    담아서, NaN 처럼 JSON 으로 못 쓰는 값이 오면 422 대신 500 이 났다."""
+    errors = [
+        {"loc": [str(part) for part in e["loc"]], "msg": e["msg"]} for e in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
 
 app.include_router(data.router)
 app.include_router(conversations.router)
