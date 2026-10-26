@@ -35,7 +35,7 @@ Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png) · 휴대
 | AI | OpenAI Chat Completions `gpt-4o-mini`(배포) / mock(로컬 개발·테스트) |
 | 프론트엔드 | HTML · CSS · 바닐라 JavaScript(프레임워크·라이브러리 0), SVG 그래프 |
 | 배포 | Render(백엔드, `render.yaml`) · Vercel(프론트, `frontend/vercel.json`) |
-| 검증 | pytest 42개 + GitHub Actions |
+| 검증 | pytest(키 없이 도는 50여 개) + GitHub Actions |
 
 ## 로컬 실행
 
@@ -81,7 +81,7 @@ cd backend && pip install -r requirements-dev.txt && pytest -q
 |---|---|---|
 | POST | `/api/data` | 데이터 추가 `{date, value, memo}` |
 | GET | `/api/data` | 전체 목록(날짜순) |
-| PUT | `/api/data/{id}` | 보낸 필드만 수정 |
+| PUT | `/api/data/{id}` | 보낸 필드만 수정(`memo: null` = 메모 지우기) |
 | DELETE | `/api/data/{id}` | 삭제 |
 | GET | `/api/data/summary?days=30` | 요약 — 건수·기간·평균·최고·최저·표준편차·마지막 값·추세 |
 | POST | `/api/conversations` | 대화 직접 저장 |
@@ -106,7 +106,7 @@ backend/
   repositories/        저장소 인터페이스 + Firestore·메모리 구현
   llm/                 AI 인터페이스 + OpenAI·mock 구현
   seed.py  data/seed_nvda_daily.csv
-  tests/               pytest 42개(키 없이 돈다)
+  tests/               pytest(키 없이 돈다)
 frontend/
   index.html  css/style.css
   js/api.js            서버 호출만 모은 곳
@@ -172,6 +172,8 @@ render.yaml            Render 배포 설정
 `POST /api/chat` 이 **AI 답을 받은 뒤에** 질문과 답을 한 번에 저장한다. AI 가 실패하면 아무것도 저장하지 않고
 502 「잠시 후 다시 시도해 주세요」를 돌려준다 — 답 없는 질문이나 빈 대화가 목록에 남지 않는다. 대화 제목은
 첫 질문의 앞 30자. AI 에는 이전 대화의 최근 10턴만 보낸다(대화가 길어져도 비용이 일정). 저장은 전부 한다.
+대화 하나는 Firestore 문서 하나(한도 1MiB)라, 900KB 에 가까워지면 AI 를 부르기 전에 409 「새 대화로 이어서」를
+돌려준다. 답 길이는 1000 토큰으로 묶었다. 요약 계산(저장소 읽기) 실패는 AI 실패(502)와 구별해 알린다.
 
 ### 환경 변수를 쓴 이유와 적용
 

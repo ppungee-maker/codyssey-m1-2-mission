@@ -24,8 +24,12 @@ function drawLineChart(svg, points) {
     return;
   }
 
-  const values = points.map((p) => p.value);
-  let lo = Math.min(...values), hi = Math.max(...values);
+  // Math.min(...values) 는 값이 수십만 개면 인자 수 한도로 RangeError — 한 번 훑어서 구한다
+  let lo = Infinity, hi = -Infinity;
+  for (const p of points) {
+    if (p.value < lo) lo = p.value;
+    if (p.value > hi) hi = p.value;
+  }
   if (lo === hi) { lo -= 1; hi += 1; } // 값이 전부 같아도 선이 가운데 그려지게
   const x = (i) => PAD.left + (i / (points.length - 1)) * (W - PAD.left - PAD.right);
   const y = (v) => PAD.top + (1 - (v - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
