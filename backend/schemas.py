@@ -30,11 +30,14 @@ class DataPoint(BaseModel):
 
 class DataSummary(BaseModel):
     count: int
+    basis: str = "전체"  # 요약에 쓴 범위 — "전체" | "최근 N일"
     date_from: date_type | None = None
     date_to: date_type | None = None
     mean: float | None = None
     max: float | None = None
     min: float | None = None
+    stdev: float | None = None  # 표준편차 — 값이 얼마나 출렁이는지
+    latest: float | None = None  # 마지막 날짜의 값
     trend: str  # "증가" | "감소" | "유지" | "데이터 부족"
     trend_detail: str
 
