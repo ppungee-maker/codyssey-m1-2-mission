@@ -1,72 +1,229 @@
 # AI 비서 — 내 데이터를 아는 챗봇
 
-> 요구사항 10이 요구하는 필수 README 항목을 그대로 이 문서에 담았다.
+일반 ChatGPT는 내 데이터를 모른다. 이 서비스는 내가 저장한 시계열 데이터(날짜·값·메모)를 매번
+요약해서 AI의 시스템 프롬프트에 넣는다. 그래서 「요즘 추세가 어때?」라고 물으면 일반론이 아니라
+**내 데이터의 수치**로 답한다. 기본 데이터는 NVDA 2년치 종가 502건(M1-1에서 분석한 데이터)이고,
+화면에서 운동 기록·공부 시간·매출처럼 어떤 시계열이든 직접 추가·수정·삭제할 수 있다.
 
-## 서비스 소개
+## 배포 URL
 
-일반 ChatGPT는 사용자의 데이터를 모른다. 이 서비스는 사용자가 저장한 시계열
-데이터(날짜/값/메모)를 실시간으로 요약해 AI의 시스템 프롬프트에 주입함으로써,
-"내 데이터를 아는" 챗봇을 만든다. 기본 시드 데이터로 NVDA 2년치 종가(M1-1에서
-분석한 것과 동일한 데이터)를 담아뒀지만, 실제로는 어떤 시계열 데이터든(운동 기록,
-학습 시간, 매출 등) CRUD로 직접 관리할 수 있다.
+| 항목 | URL |
+|---|---|
+| 프론트엔드 (Vercel) | (배포 후 기입) |
+| 백엔드 API (Render) | (배포 후 기입) |
+| Swagger UI | `<백엔드 URL>/docs` |
+
+배포 절차는 [`docs/01-배포가이드.md`](docs/01-배포가이드.md)에 있다(Firebase → Render → Vercel → CORS 순서).
+Render 무료 서버는 15분 동안 요청이 없으면 잠들어서 **첫 접속이 30초~1분** 걸릴 수 있다. 그동안 화면 위에
+「서버를 깨우는 중」 안내가 뜨고 자동으로 다시 시도한다.
+
+## 화면
+
+| 채팅 — 요약이 답에 반영 | 데이터 추가·수정 | 대화 불러오기 |
+|---|---|---|
+| ![채팅](captures/01-채팅-요약반영.png) | ![데이터](captures/02-데이터-추가-수정.png) | ![대화](captures/03-대화-불러오기.png) |
+
+Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png) · 휴대폰: [`captures/05-모바일.png`](captures/05-모바일.png)
+(로컬 mock 으로 찍은 화면 — [`captures/README.md`](captures/README.md))
 
 ## 기술 스택
 
 | 영역 | 기술 |
 |---|---|
-| 백엔드 | FastAPI, Pydantic(요청 검증), uvicorn |
-| 저장소 | Firestore(배포) / in-memory(로컬 개발 기본값) — provider 인터페이스로 전환 가능 |
-| AI | OpenAI GPT(배포) / 결정적 mock(로컬 개발 기본값) — 컨텍스트 주입 흐름은 동일 |
-| 프론트엔드 | Vanilla HTML/CSS/JavaScript (프레임워크 미사용, 요구사항) |
-| 배포(예정) | Render(백엔드), Vercel(프론트엔드) — [`docs/01-배포가이드.md`](docs/01-배포가이드.md) |
+| 백엔드 | Python 3.12, FastAPI, Pydantic v2, uvicorn |
+| 저장소 | Firebase Firestore(배포) / 메모리(로컬 개발·테스트) |
+| AI | OpenAI Chat Completions `gpt-4o-mini`(배포) / mock(로컬 개발·테스트) |
+| 프론트엔드 | HTML · CSS · 바닐라 JavaScript(프레임워크·라이브러리 0), SVG 그래프 |
+| 배포 | Render(백엔드, `render.yaml`) · Vercel(프론트, `frontend/vercel.json`) |
+| 검증 | pytest 42개 + GitHub Actions |
 
-## 배포 URL
+## 로컬 실행
 
-⏳ **아직 미배포** — Firebase/OpenAI/Render/Vercel 실 계정이 필요해 코드 완성 후
-배포는 보류했다(제니형님 지시). 대신 로컬에서 백엔드+프론트엔드를 동시에 띄우고
-전체 플로우(데이터 CRUD, 요약, 챗봇 컨텍스트 주입, 대화 저장/불러오기)를 Playwright로
-직접 조작해 검증했다 — [`captures/local-run/`](captures/local-run/) 참고.
-
-배포를 진행하면 이 표를 채운다:
-
-| 항목 | URL |
-|---|---|
-| 프론트엔드 (Vercel) | (배포 후 채울 자리) |
-| 백엔드 API (Render) | (배포 후 채울 자리) |
-| Swagger UI | `<백엔드 URL>/docs` |
-
-## 로컬 실행 방법
-
-[`docs/00-실행가이드.md`](docs/00-실행가이드.md) 참고. 요약하면:
+키 없이 바로 돈다 — 키가 없으면 메모리 저장소와 mock AI 를 쓴다.
 
 ```bash
-cd backend && pip install -r requirements.txt && uvicorn main:app --reload
-cd frontend && python3 -m http.server 5500   # 새 터미널
+# 백엔드 (터미널 1)
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload          # http://127.0.0.1:8000/docs
+
+# 프론트엔드 (터미널 2)
+cd frontend
+python3 -m http.server 5500        # http://127.0.0.1:5500
+
+# 테스트
+cd backend && pip install -r requirements-dev.txt && pytest -q
 ```
 
-## 환경 변수 목록 (최소 세트)
+실제 OpenAI·Firestore 로 돌리려면 `backend/.env.example` 을 `backend/.env` 로 복사해 키를 채운다.
+`GET /` 응답의 `storage`·`ai_provider` 가 `firestore`·`openai` 로 바뀌면 적용된 것이다.
+자세한 건 [`docs/00-실행가이드.md`](docs/00-실행가이드.md).
 
-| 변수 | 없을 때 동작 |
+## 환경 변수
+
+| 변수 | 어디 | 없으면 |
+|---|---|---|
+| `OPENAI_API_KEY` | 백엔드 | mock AI(로컬 개발용) |
+| `OPENAI_MODEL` | 백엔드 | `gpt-4o-mini` |
+| `FIREBASE_CREDENTIALS_JSON` | 백엔드 | 메모리 저장소(재시작하면 비워짐) — 서비스 계정 키 JSON **내용**을 한 줄로 |
+| `FIREBASE_PROJECT_ID` | 백엔드 | 키 JSON 의 프로젝트 |
+| `CORS_ORIGINS` | 백엔드 | 로컬 주소만 허용(`localhost:5500`·`127.0.0.1:5500`) — 배포 땐 Vercel 주소 |
+| `SUMMARY_DAYS` | 백엔드 | 전체 데이터로 요약 — 숫자를 넣으면 최근 N일 |
+| `SEED_ON_STARTUP` | 백엔드 | `true` — 저장소가 비어 있으면 시드 502건을 넣음 |
+| `API_BASE_URL` | 프론트(Vercel 빌드) | **빌드 실패** — 백엔드 주소를 꼭 넣는다 |
+
+키를 넣었는데 Firestore·OpenAI 를 못 열면 서버가 뜨지 않고 원인을 로그에 남긴다(메모리·mock 으로 몰래 바꾸지 않는다).
+
+## API
+
+| 메서드 | 경로 | 하는 일 |
+|---|---|---|
+| POST | `/api/data` | 데이터 추가 `{date, value, memo}` |
+| GET | `/api/data` | 전체 목록(날짜순) |
+| PUT | `/api/data/{id}` | 보낸 필드만 수정 |
+| DELETE | `/api/data/{id}` | 삭제 |
+| GET | `/api/data/summary?days=30` | 요약 — 건수·기간·평균·최고·최저·표준편차·마지막 값·추세 |
+| POST | `/api/conversations` | 대화 직접 저장 |
+| GET | `/api/conversations` | 대화 목록(최근 수정순, 메시지 수 포함) |
+| GET | `/api/conversations/{id}` | 대화 불러오기(전체 메시지) |
+| DELETE | `/api/conversations/{id}` | 대화 삭제 |
+| POST | `/api/chat` | 질문 → 요약 주입 → AI 답 → 대화 자동 저장 |
+| GET | `/` | 상태 확인 — 지금 쓰는 저장소·AI |
+
+## 프로젝트 구조
+
+```
+backend/
+  main.py              앱 생성 · CORS · 시작 시딩(lifespan) · 422 응답 형식
+  core/config.py       환경 변수 → Settings (키는 코드에 없다)
+  schemas.py           Pydantic 요청·응답 모델 — 입력 검증은 전부 여기
+  routers/             HTTP 만: 요청을 받아 서비스·저장소를 부르고 상태 코드로 바꾼다
+    data.py  conversations.py  chat.py
+  services/            계산과 흐름: HTTP 를 모른다
+    summary.py         요약 계산(요약 API 와 챗봇이 같이 씀)
+    chat.py            요약 → 시스템 프롬프트 → AI → 저장
+  repositories/        저장소 인터페이스 + Firestore·메모리 구현
+  llm/                 AI 인터페이스 + OpenAI·mock 구현
+  seed.py  data/seed_nvda_daily.csv
+  tests/               pytest 42개(키 없이 돈다)
+frontend/
+  index.html  css/style.css
+  js/api.js            서버 호출만 모은 곳
+  js/app.js            화면 상태와 이벤트
+  js/chart.js          SVG 선 그래프
+  scripts/write-config.js  Vercel 빌드 때 API_BASE_URL → config.js
+render.yaml            Render 배포 설정
+```
+
+## 설계 설명
+
+### 라우터 · 서비스 · 저장소를 나눈 기준
+
+**「무엇을 알아야 하는가」로 나눴다.** 라우터는 HTTP(경로·상태 코드·예외 → 404/502)만 안다. 서비스는
+계산과 흐름만 알고 HTTP 를 모른다 — 그래서 `summarize()` 를 요약 API 와 챗봇이 그대로 같이 쓰고,
+테스트는 서버 없이 함수를 바로 부른다. 저장소는 「어디에 저장하나」만 안다 — Firestore 와 메모리가 같은
+인터페이스(`repositories/base.py`)를 지켜서, 라우터·서비스는 어느 쪽인지 모른다. AI 도 같은 방식이다(`llm/`).
+
+### data / conversations 컬렉션 구조
+
+- `data` — 문서 1개 = 데이터 1건 `{date, value, memo, created_at}`. 1건씩 따로 추가·수정·삭제하니까 문서도 1건씩.
+  `date` 는 ISO 문자열(`2026-10-26`)로 저장해 문자열 정렬이 곧 날짜 정렬이 되게 했다(`order_by("date")`).
+- `conversations` — 문서 1개 = 대화 1개 `{title, messages: [{role, content}], created_at, updated_at}`.
+  대화는 항상 통째로 불러오고(불러오기 = 문서 1번 읽기) 길이가 짧아서 메시지를 문서 안 배열로 뒀다.
+  메시지마다 문서를 나누는 하위 컬렉션은 읽기 횟수만 늘린다. 목록은 `updated_at` 내림차순 — 방금 이어서
+  대화한 것이 위로 온다.
+
+### Pydantic 스키마와 검증 위치
+
+요청 모델(`DataPointCreate`·`DataPointUpdate`·`ChatRequest`·`ConversationCreate`)과 응답 모델을 나눴다.
+요청 모델에만 검증을 건다 — 라우터 함수에 들어오기 **전에** FastAPI 가 422 로 돌려보낸다.
+모르는 필드 거부, 길이 상한(메모 200자·질문 2000자), 유한한 숫자만, 날짜 1900~2100, 수정 시 필드 1개 이상,
+`role` 은 `user`·`assistant` 만. 응답 모델은 Swagger 문서와 응답 모양을 고정하는 용도다.
+
+### 프론트 상태 흐름
+
+상태는 **지금 보고 있는 대화 id 하나**(`currentConversationId`)뿐이다. 나머지(요약·목록·그래프)는 서버가
+진짜고 화면은 매번 다시 받아 그린다.
+
+- 채팅: 질문 → 내 말풍선 + 「생각하는 중」 → `POST /api/chat`(id 가 없으면 서버가 새 대화를 만들어 id 를
+  돌려줌) → id 저장 → 답 말풍선 → 대화 목록 갱신
+- 대화 불러오기: 목록 클릭 → `GET /api/conversations/{id}` → id 바꾸고 메시지 다시 그림 → 다음 질문은 이 대화에 이어짐
+- 데이터 관리: 추가·수정·삭제 → 목록·요약·그래프를 다시 받음 → 다음 질문부터 AI 답에도 반영됨
+
+### 컨텍스트 주입을 쓴 이유와 장단점
+
+질문할 때마다 `summarize()` 결과를 시스템 프롬프트에 넣는다(`services/chat.py`).
+
+- 장점: 데이터 502건 원본 대신 몇 줄 요약만 보내서 **빠르고 싸다**. 데이터가 바뀌면 다음 질문에 바로 반영된다
+  (테스트 `test_chat_sees_new_data`). 모델을 다시 학습시키지 않아도 된다.
+- 단점: 요약에 없는 것은 모른다(「3월 12일 값은?」에는 답할 수 없다). 그래서 프롬프트에 「요약에 없는 수치는
+  지어내지 말고 모른다고 하라」를 넣었다. 요약 기준을 잘못 고르면 답도 같이 틀린다. 이 한계는 AI 가 필요할 때
+  데이터 조회 함수를 직접 부르게 하는 Function Calling 으로 넘을 수 있다(보너스, 아직 안 함).
+
+### 요약(`/api/data/summary`)을 따로 둔 이유
+
+같은 숫자를 두 곳이 쓴다 — 화면의 요약 막대와 AI 의 시스템 프롬프트. 계산을 한 함수에 두니 화면과 AI 가
+**항상 같은 숫자**를 본다. 따로 API 로 열어 두어서 화면이 AI 를 거치지 않고 요약만 가져오고, Swagger 에서
+요약이 맞는지 바로 확인할 수 있다.
+
+### 대화 저장 방식
+
+`POST /api/chat` 이 **AI 답을 받은 뒤에** 질문과 답을 한 번에 저장한다. AI 가 실패하면 아무것도 저장하지 않고
+502 「잠시 후 다시 시도해 주세요」를 돌려준다 — 답 없는 질문이나 빈 대화가 목록에 남지 않는다. 대화 제목은
+첫 질문의 앞 30자. AI 에는 이전 대화의 최근 10턴만 보낸다(대화가 길어져도 비용이 일정). 저장은 전부 한다.
+
+### 환경 변수를 쓴 이유와 적용
+
+키를 코드에 쓰면 공개 저장소에 그대로 올라간다. 그래서 키는 Render 대시보드(배포)와 `backend/.env`(로컬,
+`.gitignore`)에만 두고 `core/config.py` 가 읽는다. 같은 코드가 환경 변수만으로 로컬(메모리·mock)과
+배포(Firestore·OpenAI)를 오간다. 프론트의 백엔드 주소도 Vercel 환경 변수 `API_BASE_URL` 로 빌드 때 넣는다.
+`render.yaml` 에는 키 이름만 있고 값은 없다(`sync: false`).
+
+### 콜드스타트 안내·완화
+
+화면을 열면 먼저 `GET /` 로 서버를 깨운다. 2.5초 안에 답이 없으면 「서버를 깨우는 중… 첫 접속은 30초~1분」
+안내를 띄우고, 연결 실패·502·503 이면 5초 간격으로 6번까지 다시 시도한 뒤 데이터를 받는다. 채팅이 6초 넘게
+걸리면 말풍선 문구를 「서버가 깨어나는 중이면 1분쯤 걸릴 수 있어요」로 바꾼다. 요청마다 70초 시간 제한을 둬서
+무한정 기다리지 않는다.
+
+### CORS
+
+프론트(Vercel)와 백엔드(Render)는 주소(오리진)가 달라서, 브라우저가 백엔드 응답을 프론트 코드에 넘겨주지
+않는다. 백엔드가 「이 오리진은 허용」이라고 응답 헤더로 알려 줘야 한다. `CORS_ORIGINS` 에 Vercel 주소만 넣어
+허용하고(비우면 로컬 주소만), 쿠키를 쓰지 않으니 credentials 는 껐다. 주소 끝의 `/` 는 자동으로 뗀다 —
+브라우저가 보내는 오리진엔 슬래시가 없어서 붙여 넣으면 막히는 흔한 실수다.
+
+### 사용자 입력을 그대로 저장·전달할 때의 위험과 대응
+
+| 위험 | 대응 |
 |---|---|
-| `OPENAI_API_KEY` | mock LLM 사용(로컬 개발 기본값) |
-| `OPENAI_MODEL` | 기본값 `gpt-4o-mini` |
-| `FIREBASE_CREDENTIALS_JSON` | in-memory store 사용(로컬 개발 기본값) |
-| `FIREBASE_PROJECT_ID` | - |
-| `CORS_ORIGINS` | 기본값 `*`(전체 허용, 배포 시 프론트 URL로 제한 권장) |
+| 메모·제목에 `<img onerror=…>` 를 넣어 다른 사람 화면에서 스크립트 실행(XSS) | 화면에 넣을 때 전부 `textContent` — HTML 로 해석하지 않는다(`innerHTML` 0곳) |
+| 엉뚱한 값으로 통계 오염(NaN·무한대·20260년) | Pydantic 에서 422 — 유한한 숫자·날짜 범위 |
+| 아주 긴 메모·질문으로 저장소·AI 비용 폭증 | 길이 상한, AI 에는 최근 10턴만 |
+| 모르는 필드가 DB 에 섞임 | `extra="forbid"` |
+| 오류 메시지로 키·내부 정보 노출 | AI 오류 원인은 서버 로그에만, 422 는 입력값을 되돌려 주지 않음 |
+| CSV 를 엑셀로 열 때 `=` 로 시작하는 칸이 수식으로 실행 | 내보낼 때 앞에 `'` |
 
-자세한 값 형식은 [`backend/.env.example`](backend/.env.example) 참고.
+질문 안의 「이전 지시는 무시해」 같은 프롬프트 주입은 막지 못한다. 대신 AI 가 할 수 있는 일이 「답하기」뿐이라
+(데이터를 바꾸는 도구가 없다) 피해 범위가 답변 내용으로 한정된다.
 
-## 제출 스크린샷
+### 데이터가 늘거나 요약 기준이 바뀌면
 
-배포 URL이 없어 로컬 실행 화면으로 대체 — [`captures/local-run/`](captures/local-run/):
+- **최근 30일만 반영**: 코드 수정 없이 `SUMMARY_DAYS=30`(챗봇·요약 기본값) 또는 `GET /api/data/summary?days=30`.
+  기준점은 데이터의 마지막 날짜다.
+- **새 지표**(예: 이동평균): `schemas.DataSummary` 에 필드 추가 → `services/summary.py` 에서 계산 → 챗봇에도
+  보이게 `services/chat.py` 의 `SYSTEM_PROMPT_TEMPLATE` 에 한 줄. 테스트는 `tests/test_summary.py`.
+- **추세 판단 기준**: `services/summary.py` 의 `_trend()`(최근 20% 구간, ±2% 문턱).
+- **데이터가 수만 건**: 지금은 요청마다 전체를 읽는다. 그때는 `repositories/` 에 기간 조건 조회를 더하고
+  (Firestore `where("date", ">=", …)`), 요약을 데이터가 바뀔 때만 다시 계산해 저장하는 방식으로 바꾼다.
 
-- 데이터 요약이 보이는 채팅 화면(질문+답변 포함): [`03-채팅응답.png`](captures/local-run/03-채팅응답.png)
-- 데이터 관리 화면(CRUD 중 추가 동작): [`04-데이터추가.png`](captures/local-run/04-데이터추가.png)
-- 대화 기록 화면(불러오기 동작): [`05-대화불러오기.png`](captures/local-run/05-대화불러오기.png)
-- Swagger UI: [`01-swagger-ui.png`](captures/local-run/01-swagger-ui.png)
+## 보너스
 
-## 문서 구조
-
-- [`docs/00-실행가이드.md`](docs/00-실행가이드.md) — 로컬 실행 절차
-- [`docs/01-배포가이드.md`](docs/01-배포가이드.md) — Render+Vercel 배포 단계별 가이드
-- [`docs/모범답안-M1-2.md`](docs/모범답안-M1-2.md) — 요구사항 충족 매핑
+| 항목 | 상태 |
+|---|---|
+| 요약·통계 확장 | 표준편차·마지막 값 지표, 최근 N일 기준 |
+| 시각화 | SVG 선 그래프(30일·90일·전체, 가리키면 값 표시) — 라이브러리 0 |
+| 데이터 내보내기 | CSV(엑셀 한글·수식 실행 대비) |
+| 다크 모드 | 토글, 브라우저에 기억 |
+| Function Calling + MCP/GPT Actions | 아직 안 함 |
