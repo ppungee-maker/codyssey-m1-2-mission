@@ -69,6 +69,13 @@ function renderChart() {
   drawLineChart($("chart"), points);
 }
 
+// 화면 폭이 바뀌면(회전·창 크기) 그 폭에 맞춰 다시 그린다
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderChart, 150);
+});
+
 document.querySelectorAll(".range button").forEach((btn) =>
   btn.addEventListener("click", () => {
     chartDays = Number(btn.dataset.days);
