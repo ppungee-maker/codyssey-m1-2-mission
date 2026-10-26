@@ -9,9 +9,10 @@
 
 | 항목 | URL |
 |---|---|
-| 프론트엔드 (Vercel) | (배포 후 기입) |
-| 백엔드 API (Render) | (배포 후 기입) |
-| Swagger UI | `<백엔드 URL>/docs` |
+| 프론트엔드 (Vercel) | https://codyssey-m1-2-mission.vercel.app |
+| 백엔드 API (Render) | https://m12-ai-assistant-api.onrender.com |
+| Swagger UI | https://m12-ai-assistant-api.onrender.com/docs |
+| 상태 확인 | https://m12-ai-assistant-api.onrender.com/ → `{"status": "ok", "storage": "firestore", "ai_provider": "openai"}` |
 
 배포 절차는 [`docs/01-배포가이드.md`](docs/01-배포가이드.md)에 있다(Firebase → Render → Vercel → CORS 순서).
 Render 무료 서버는 15분 동안 요청이 없으면 잠들어서 **첫 접속이 30초~1분** 걸릴 수 있다. 그동안 화면 위에
@@ -24,7 +25,56 @@ Render 무료 서버는 15분 동안 요청이 없으면 잠들어서 **첫 접�
 | ![채팅](captures/01-채팅-요약반영.png) | ![데이터](captures/02-데이터-추가-수정.png) | ![대화](captures/03-대화-불러오기.png) |
 
 Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png) · 휴대폰: [`captures/05-모바일.png`](captures/05-모바일.png)
-(로컬 mock 으로 찍은 화면 — [`captures/README.md`](captures/README.md))
+(캡처마다 무엇을 보여 주는지 — [`captures/README.md`](captures/README.md))
+
+## 동작 확인
+
+배포 주소에서 기능마다 이렇게 확인한다(응답 숫자는 시드 502건 기준).
+
+**1. 웹 접속** — https://codyssey-m1-2-mission.vercel.app 를 열면 요약 막대(건수·기간·평균·최고/최저·표준편차·추세), 추이 그래프, 대화 기록·채팅·
+데이터 관리 세 패널이 뜬다. 서버가 잠들어 있으면 「서버를 깨우는 중…」 안내가 먼저 뜨고 30초~1분 안에 채워진다.
+
+**2. Swagger UI** — https://m12-ai-assistant-api.onrender.com/docs 에 data 5개·conversations 4개·chat 1개·상태 확인 1개, 모두 11개 API 와
+요청·응답 스키마가 나온다. 각 API 의 「Try it out」 으로 바로 호출해 볼 수 있다.
+
+**3. 데이터 추가 → Firestore 저장 → 목록 반영** — 화면 「데이터 관리」에서 날짜·값·메모를 넣고 [추가] →
+`POST /api/data` 가 Firestore `data` 컬렉션에 문서 1개(`date`·`value`·`memo`·`created_at`)를 만든다 →
+화면이 목록·요약·그래프를 다시 받아 건수가 502건 → 503건으로 바뀐다. Firebase 콘솔 → Firestore → `data`
+에서 같은 문서를 볼 수 있다. [수정]·[삭제] 도 같은 흐름(`PUT`·`DELETE /api/data/{id}`)이다.
+
+**4. 요약 응답과 채팅 반영** — `GET https://m12-ai-assistant-api.onrender.com/api/data/summary`
+
+```json
+{
+  "count": 502, "basis": "전체", "date_from": "2024-09-03", "date_to": "2026-09-02",
+  "mean": 165.3759, "max": 235.74, "min": 94.31, "stdev": 34.1833, "latest": 224.41,
+  "trend": "증가", "trend_detail": "최근 100건 평균(209.66)이 이전 대비 +35.8%"
+}
+```
+
+`?days=30` 이면 `"count": 22, "basis": "최근 30일", "trend": "유지"` 로 범위가 바뀐다.
+채팅에서 「요즘 추세가 어때?」 → `POST /api/chat` 이 위 요약을 시스템 프롬프트에 넣고 GPT 를 부른다.
+답은 요약 수치를 근거로 한다(응답 예시):
+
+```json
+{
+  "conversation_id": "Xk2f…",
+  "answer": "저장된 502건(2024-09-03 ~ 2026-09-02)을 보면 최근 추세는 증가입니다. 최근 100건 평균이 209.66으로 이전 구간보다 35.8% 높고, 마지막 값은 224.41입니다.",
+  "provider": "openai"
+}
+```
+
+데이터를 추가하면 다음 질문의 요약에 바로 반영된다(요약을 질문마다 새로 계산한다).
+
+**5. 대화 저장·목록·불러오기** — 질문 하나에 답이 오면 질문과 답이 `conversations` 컬렉션에 저장되고 왼쪽
+「대화 기록」에 「요즘 추세가 어때? (2)」 처럼 제목·메시지 수가 뜬다(`GET /api/conversations`, 최근 대화가 위).
+「+ 새 대화」로 다른 대화를 시작한 뒤 목록의 앞 대화를 누르면 `GET /api/conversations/{id}` 로 메시지 전체를
+다시 불러오고, 이어서 질문하면 같은 대화에 이어 저장된다. [×] 는 `DELETE /api/conversations/{id}`.
+
+**6. 휴대폰·작은 화면** — 900px 이하에서 세 패널이 한 줄씩 쌓이고, 600px 이하에서는 채팅이 맨 위로 올라오고
+요약 카드는 2열, 채팅창은 화면 높이의 70%, 버튼은 손가락으로 누르기 좋게 커진다. 입력칸 글자는 16px 이라
+아이폰이 입력할 때 화면을 확대하지 않는다. 그래프는 화면 폭에 맞춰 다시 그려 글자가 작아지지 않는다.
+390×844 화면에서 가로 스크롤 없이 채팅·데이터 추가·대화 불러오기가 된다.
 
 ## 기술 스택
 
