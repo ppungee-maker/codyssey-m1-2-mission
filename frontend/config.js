@@ -1,5 +1,4 @@
-// 백엔드 API 주소. 로컬 개발 기본값은 uvicorn 기본 포트.
-// Vercel에 배포할 땐 이 값을 Render 배포 URL로 바꾸고 다시 배포한다
-// (빌드 스텝이 없는 순수 정적 파일이라 이 파일을 직접 고치는 게 가장 단순하다 —
-// docs/01-배포가이드.md 참고).
+// 백엔드 API 주소 — 로컬 개발 기본값(uvicorn 기본 포트).
+// 배포(Vercel)에서는 빌드 때 scripts/write-config.js 가 환경변수 API_BASE_URL 로 이 파일을
+// 새로 만든다. 그러니 배포 주소를 여기 적어 커밋하지 않는다.
 const API_BASE_URL = "http://127.0.0.1:8000";
