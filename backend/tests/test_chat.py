@@ -31,3 +31,49 @@ def test_chat_unknown_conversation_is_404(client):
 
 def test_chat_blank_message_is_422(client):
     assert client.post("/api/chat", json={"message": "   "}).status_code == 422
+
+
+class _Boom:
+    def chat(self, system_prompt, history, user_message):
+        raise RuntimeError("upstream 500 sk-secret")
+
+
+def test_llm_failure_is_502_and_saves_nothing(client, monkeypatch):
+    monkeypatch.setattr("services.chat.provider", _Boom())
+    before = client.get("/api/conversations").json()
+    r = client.post("/api/chat", json={"message": "평균은?"})
+    assert r.status_code == 502
+    assert "sk-secret" not in r.text  # 내부 오류 문구를 화면에 내지 않는다
+    assert client.get("/api/conversations").json() == before
+
+
+def test_llm_failure_keeps_existing_conversation_unchanged(client, monkeypatch):
+    conv_id = client.post("/api/chat", json={"message": "평균은?"}).json()["conversation_id"]
+    monkeypatch.setattr("services.chat.provider", _Boom())
+    assert client.post("/api/chat", json={"message": "또?", "conversation_id": conv_id}).status_code == 502
+    assert len(client.get(f"/api/conversations/{conv_id}").json()["messages"]) == 2
+
+
+def test_history_sent_to_llm_is_capped(client, monkeypatch):
+    from services.chat import HISTORY_TURNS
+
+    seen = []
+
+    class Spy:
+        def chat(self, system_prompt, history, user_message):
+            seen.append(len(history))
+            return "ok"
+
+    monkeypatch.setattr("services.chat.provider", Spy())
+    conv_id = client.post("/api/chat", json={"message": "0"}).json()["conversation_id"]
+    for i in range(HISTORY_TURNS + 3):
+        client.post("/api/chat", json={"message": str(i), "conversation_id": conv_id})
+    assert max(seen) == HISTORY_TURNS * 2
+    assert len(client.get(f"/api/conversations/{conv_id}").json()["messages"]) == (HISTORY_TURNS + 4) * 2
+
+
+def test_system_prompt_contains_summary():
+    from services.chat import build_system_prompt
+
+    prompt = build_system_prompt()
+    assert "건수:" in prompt and "추세:" in prompt and "표준편차:" in prompt

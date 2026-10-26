@@ -12,7 +12,8 @@ except ImportError as exc:  # pragma: no cover - 키 없는 기본 실행 경로
 
 class OpenAILLMProvider(LLMProvider):
     def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
-        self._client = OpenAI(api_key=api_key)
+        # 무료 서버(Render)에서 요청이 매달리지 않게 시간 제한을 둔다 — 넘으면 /api/chat 이 502.
+        self._client = OpenAI(api_key=api_key, timeout=30, max_retries=1)
         self._model = model
 
     def chat(self, system_prompt: str, history: list[dict], user_message: str) -> str:
