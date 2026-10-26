@@ -9,7 +9,11 @@ async function api(path, options = {}) {
   });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
-    throw new Error(body.detail || `HTTP ${resp.status}`);
+    // 422 는 [{loc, msg}] 목록, 나머지는 문자열 — 둘 다 한 줄 문장으로
+    const detail = Array.isArray(body.detail)
+      ? body.detail.map(e => `${e.loc.at(-1)}: ${e.msg}`).join(", ")
+      : body.detail;
+    throw new Error(detail || `HTTP ${resp.status}`);
   }
   if (resp.status === 204) return null;
   return resp.json();
