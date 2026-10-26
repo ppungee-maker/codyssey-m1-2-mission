@@ -232,3 +232,6 @@ header h1 { font-size: 1.3rem; margin: 0; }
 .chart-area { fill: var(--accent); opacity: 0.08; }
 .chart-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
 .chart-tip { fill: var(--text); font-size: 12px; font-weight: 600; }
+
+/* 보너스: 답 아래 「도구 사용」 표시 */
+.tool-used { margin-top: 6px; font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }

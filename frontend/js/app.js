@@ -230,6 +230,16 @@ function bubble(role, content) {
   return el("div", { class: `msg ${role}` }, content);
 }
 
+// 보너스: AI 가 답을 만들며 부른 도구를 답 아래에 작게 보여 준다 — 「추측이 아니라 찾아봤다」가 보이게
+function answerBubble(resp) {
+  const node = bubble("assistant", resp.answer);
+  for (const t of resp.tools_used ?? []) {
+    const args = Object.entries(t.arguments).map(([k, v]) => `${k}=${v}`).join(", ");
+    node.append(el("div", { class: "tool-used" }, `도구 사용: ${t.name}(${args})`));
+  }
+  return node;
+}
+
 async function loadConversation(id) {
   const generation = ++viewGeneration;
   const conv = await api.getConversation(id);
@@ -280,7 +290,7 @@ $("chat-form").addEventListener("submit", async (e) => {
     // 넣지 않고 목록(메시지 수)만 갱신한다. 넣으면 다음 질문이 엉뚱한 대화로 간다.
     if (generation === viewGeneration) {
       currentConversationId = resp.conversation_id;
-      loading.replaceWith(bubble("assistant", resp.answer));
+      loading.replaceWith(answerBubble(resp));
       await refreshConversationList();
     } else if (currentConversationId === resp.conversation_id) {
       // 다른 대화에 갔다가 이 대화로 돌아와 있다 — 저장된 답까지 다시 불러온다
