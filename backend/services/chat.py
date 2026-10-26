@@ -80,7 +80,8 @@ def reply(message: str, conversation_id: str | None) -> tuple[str, str]:
         if conv is None:
             raise ConversationNotFound(conversation_id)
         # AI 를 부르기 **전에** 본다 — 답을 받고 나서 저장이 실패하면 답을 버리게 된다
-        size = conversation_bytes(conv["messages"]) + len(message.encode()) + ANSWER_BYTES_BUDGET
+        turn = [{"content": message}, {"content": "x" * ANSWER_BYTES_BUDGET}]  # 질문 + 답 예산
+        size = conversation_bytes(conv["messages"]) + conversation_bytes(turn)
         if size > CONVERSATION_MAX_BYTES:
             raise ConversationFull(conversation_id)
         history = conv["messages"][-HISTORY_TURNS * 2 :]

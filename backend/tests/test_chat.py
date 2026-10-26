@@ -125,3 +125,14 @@ def test_store_error_is_not_reported_as_ai_failure(client, monkeypatch):
     monkeypatch.setattr("services.chat.store.list_data", broken)
     with pytest.raises(RuntimeError, match="firestore down"):
         client.post("/api/chat", json={"message": "평균은?"})
+
+
+def test_many_short_messages_count_toward_the_limit(client, monkeypatch):
+    """짧은 메시지 수천 개 — 본문 합은 작아도 Firestore 문서는 메시지마다 구조 몫이 붙는다."""
+    from repositories import store
+    from schemas import CONVERSATION_MAX_BYTES, MESSAGE_OVERHEAD_BYTES
+
+    n = CONVERSATION_MAX_BYTES // MESSAGE_OVERHEAD_BYTES  # 본문은 n 바이트뿐
+    conv = store.add_conversation("짧은 말 많이", [{"role": "user", "content": "a"}] * n)
+    r = client.post("/api/chat", json={"message": "또", "conversation_id": conv["id"]})
+    assert r.status_code == 409
