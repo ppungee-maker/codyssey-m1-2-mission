@@ -48,10 +48,11 @@
       <form id="data-form">
         <input id="data-date" type="date" required>
         <input id="data-value" type="number" step="any" placeholder="값" required>
-        <input id="data-memo" type="text" placeholder="메모 (선택)">
+        <input id="data-memo" type="text" maxlength="200" placeholder="메모 (선택)">
         <button type="submit">추가</button>
       </form>
       <ul id="data-list"></ul>
+      <button id="data-more" type="button" class="more" hidden>더 보기</button>
       <p class="hint" id="data-count-hint"></p>
     </div>
   </div>

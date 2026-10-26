@@ -178,3 +178,19 @@ header h1 { font-size: 1.3rem; margin: 0; }
   margin: 0 0 12px;
   font-size: 0.85rem;
 }
+
+#data-list .row-text { overflow-wrap: anywhere; }
+#data-list .row-actions { display: flex; gap: 2px; flex-shrink: 0; }
+#data-list li.editing { display: block; }
+.edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.edit-form input[type="text"] { grid-column: 1 / -1; }
+.edit-form input {
+  padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 0.8rem; min-width: 0;
+}
+.edit-form .row-actions { grid-column: 1 / -1; justify-content: flex-end; }
+.more {
+  width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer;
+}
+.more[hidden] { display: none; }
