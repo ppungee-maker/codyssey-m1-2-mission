@@ -11,7 +11,10 @@ function svgEl(tag, attrs = {}) {
 
 // points = [{date: "YYYY-MM-DD", value: number}] (날짜순)
 function drawLineChart(svg, points) {
-  const W = 800, H = 220, PAD = { top: 16, right: 16, bottom: 26, left: 52 };
+  // 그리는 좌표 = 실제 화면 폭. 800 고정으로 그려 줄이면 휴대폰에서 글자가 5px 로 작아진다.
+  const W = Math.max(280, Math.round(svg.clientWidth || 800));
+  const H = W < 500 ? 180 : 220;
+  const PAD = { top: 16, right: 12, bottom: 26, left: 48 };
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.replaceChildren();
   if (points.length < 2) {
@@ -58,7 +61,7 @@ function drawLineChart(svg, points) {
     dot.setAttribute("cx", x(j));
     dot.setAttribute("cy", y(p.value));
     tip.textContent = `${p.date} · ${p.value}`;
-    tip.setAttribute("x", Math.min(x(j) + 8, W - 150));
+    tip.setAttribute("x", Math.min(x(j) + 8, W - 140));
     tip.setAttribute("y", Math.max(y(p.value) - 8, 14));
     dot.setAttribute("visibility", "visible");
     tip.setAttribute("visibility", "visible");
