@@ -227,6 +227,10 @@ $("chat-form").addEventListener("submit", async (e) => {
   const loading = bubble("assistant loading", "생각하는 중...");
   box.append(loading);
   scrollMessages();
+  // 오래 걸리면 이유를 알려 준다(서버가 잠들어 있었거나 AI 가 느릴 때)
+  const slow = setTimeout(() => {
+    loading.textContent = "생각하는 중... 서버가 깨어나는 중이면 1분쯤 걸릴 수 있어요.";
+  }, 6000);
 
   try {
     const resp = await api.chat(message, currentConversationId);
@@ -237,6 +241,7 @@ $("chat-form").addEventListener("submit", async (e) => {
     loading.textContent = `오류: ${err.message}`;
     loading.classList.remove("loading");
   } finally {
+    clearTimeout(slow);
     submit.disabled = false;
     scrollMessages();
   }
@@ -289,9 +294,15 @@ function today() {
     // 저장소를 못 읽으면 기본 테마
   }
   $("data-date").value = today();
+  // 2.5초 안에 서버가 답하면 안내 없이 넘어간다 — 늦으면 「깨우는 중」 안내를 띄운다
+  const notice = setTimeout(() => ($("waking").hidden = false), 2500);
   try {
+    await api.wake();
     await Promise.all([refreshData(), refreshConversationList()]);
   } catch (err) {
     showError(err);
+  } finally {
+    clearTimeout(notice);
+    $("waking").hidden = true;
   }
 })();
