@@ -20,3 +20,10 @@ jobs:
           pytest -q
       - name: 프론트엔드 문법 검사
         run: find frontend -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: 배포용 config.js 만들기 확인
+        working-directory: frontend
+        run: |
+          API_BASE_URL=https://example.onrender.com/ node scripts/write-config.js
+          grep -q '"https://example.onrender.com"' config.js
+          node --check config.js
+          ! API_BASE_URL= node scripts/write-config.js
