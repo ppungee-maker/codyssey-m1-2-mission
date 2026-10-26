@@ -8,24 +8,13 @@ storage/ai 백엔드 선택도 여기서 결정한다:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 
+from dotenv import load_dotenv
 
-def _load_dotenv(path: str = ".env") -> None:
-    if not os.path.exists(path):
-        return
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            if key and key not in os.environ:
-                os.environ[key] = value.strip().strip('"').strip("'")
-
-
-_load_dotenv()
+# backend/.env 를 읽는다. 이미 있는 환경변수(Render 대시보드 값)는 덮어쓰지 않는다.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
 
 
 @dataclass
@@ -34,7 +23,7 @@ class Settings:
     openai_model: str = "gpt-4o-mini"
     firebase_credentials_json: str | None = None
     firebase_project_id: str | None = None
-    cors_origins: list[str] = None
+    cors_origins: list[str] = field(default_factory=lambda: ["*"])
 
     @classmethod
     def load(cls) -> "Settings":
