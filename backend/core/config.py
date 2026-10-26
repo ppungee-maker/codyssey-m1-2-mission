@@ -24,6 +24,7 @@ class Settings:
     firebase_credentials_json: str | None = None
     firebase_project_id: str | None = None
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    summary_days: int | None = None  # 요약 기본 범위(최근 N일). None = 전체
 
     @classmethod
     def load(cls) -> "Settings":
@@ -35,6 +36,7 @@ class Settings:
             firebase_credentials_json=os.environ.get("FIREBASE_CREDENTIALS_JSON") or None,
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID") or None,
             cors_origins=origins,
+            summary_days=int(os.environ["SUMMARY_DAYS"]) if os.environ.get("SUMMARY_DAYS") else None,
         )
 
     @property
