@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import re
 
-from .base import LLMProvider
+from .base import LLMProvider, ToolRunner
 
 _NUM = r"[-+]?\d+(?:\.\d+)?"
+_DATE = r"\d{4}-\d{2}-\d{2}"
 
 
 def _extract(pattern: str, text: str, default: str = "정보 없음") -> str:
@@ -21,14 +22,47 @@ def _extract(pattern: str, text: str, default: str = "정보 없음") -> str:
     return m.group(1) if m else default
 
 
+def _tool_answer(user_message: str, run_tool: ToolRunner) -> str | None:
+    """질문에 날짜(YYYY-MM-DD)나 「최근 N일」이 있으면 GPT 처럼 도구를 불러 답한다 — 키 없이도
+    Function Calling 흐름(질문 → 도구 호출 → 결과로 답)을 확인할 수 있게."""
+    dates = re.findall(_DATE, user_message)
+    if dates:
+        lo, hi = min(dates), max(dates)
+        result = run_tool("query_data", {"date_from": lo, "date_to": hi})
+        if "error" in result:
+            return f"날짜를 확인해 주세요: {result['error']}"
+        if not result["rows"]:
+            return f"{lo}~{hi} 에 저장된 데이터가 없습니다."
+        shown = ", ".join(f"{r['date']} {r['value']}" for r in result["rows"][:5])
+        more = f" 외 {result['count'] - 5}건" if result["count"] > 5 else ""
+        return f"{lo}~{hi} 데이터는 {result['count']}건입니다: {shown}{more}."
+    m = re.search(r"최근\s*(\d+)\s*일", user_message)
+    if m:
+        s = run_tool("get_summary", {"days": int(m.group(1))})
+        if "error" in s:
+            return f"기간을 확인해 주세요: {s['error']}"
+        return f"{s['basis']} {s['count']}건의 평균은 {s['mean']}, 추세는 '{s['trend']}'입니다."
+    return None
+
+
 class MockLLMProvider(LLMProvider):
-    def chat(self, system_prompt: str, history: list[dict], user_message: str) -> str:
+    def chat(
+        self,
+        system_prompt: str,
+        history: list[dict],
+        user_message: str,
+        tools: list[dict] | None = None,
+        run_tool: ToolRunner | None = None,
+    ) -> str:
+        if tools and run_tool:
+            via_tool = _tool_answer(user_message, run_tool)
+            if via_tool:
+                return f"[mock 응답·도구 사용] {via_tool}"
         count = _extract(rf"건수[:：]\s*({_NUM})", system_prompt)
         mean = _extract(rf"평균[:：]\s*({_NUM})", system_prompt)
         trend = _extract(r"추세[:：]\s*(\S+)", system_prompt)
         period = _extract(r"기간[:：]\s*(\S+\s*~\s*\S+)", system_prompt)
 
-        lowered = user_message.lower()
         if any(k in user_message for k in ("추세", "트렌드", "요즘", "최근")):
             focus = f"최근 추세는 '{trend}'입니다."
         elif any(k in user_message for k in ("평균", "얼마")):

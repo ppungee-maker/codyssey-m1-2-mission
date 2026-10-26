@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 )
 def chat(payload: ChatRequest) -> ChatResponse:
     try:
-        conv_id, answer = reply(payload.message, payload.conversation_id)
+        conv_id, answer, used = reply(payload.message, payload.conversation_id)
     except ConversationNotFound:
         raise HTTPException(404, f"대화를 찾을 수 없습니다: {payload.conversation_id}") from None
     except ConversationFull:
@@ -37,4 +37,5 @@ def chat(payload: ChatRequest) -> ChatResponse:
         conversation_id=conv_id,
         answer=answer,
         provider="openai" if settings.use_real_ai else "mock",
+        tools_used=used,
     )

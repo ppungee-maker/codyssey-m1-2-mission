@@ -119,10 +119,18 @@ class ChatRequest(_Request):
         return v
 
 
+class ToolCall(BaseModel):
+    """이 답을 만들며 AI 가 부른 도구 하나(보너스 Function Calling) — 화면에 그대로 보여 준다."""
+
+    name: str
+    arguments: dict
+
+
 class ChatResponse(BaseModel):
     conversation_id: str
     answer: str
     provider: str  # "mock" | "openai" — 응답이 어느 경로로 생성됐는지 투명하게 노출
+    tools_used: list[ToolCall] = Field(default_factory=list)
 
 
 class ConversationCreate(_Request):

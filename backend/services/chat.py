@@ -15,6 +15,7 @@ from llm import provider
 from repositories import store
 from schemas import CONVERSATION_MAX_BYTES, conversation_bytes
 from services.summary import summarize
+from services.tools import TOOLS, run_tool
 
 HISTORY_TURNS = 10  # 한 턴 = 질문 + 답 2개 메시지
 TITLE_LENGTH = 30
@@ -35,7 +36,9 @@ SYSTEM_PROMPT_TEMPLATE = """당신은 사용자의 개인 데이터를 이해하
 추세: {trend} ({trend_detail})
 
 사용자가 데이터와 무관한 질문을 하면 일반적인 비서로서 답하되, 데이터 관련 질문에는
-반드시 위 요약 수치를 근거로 답하세요. 요약에 없는 수치는 지어내지 말고 모른다고 하세요.
+반드시 위 요약 수치를 근거로 답하세요. 특정 날짜·기간의 값처럼 요약에 없는 것은 도구
+query_data(날짜 범위), 다른 기간의 요약은 get_summary(days) 로 찾아보고 답하세요.
+도구로도 찾지 못한 수치는 지어내지 말고 모른다고 하세요.
 """
 
 
@@ -72,8 +75,9 @@ def build_system_prompt() -> str:
     )
 
 
-def reply(message: str, conversation_id: str | None) -> tuple[str, str]:
-    """(conversation_id, answer). 없는 대화면 ConversationNotFound, LLM 실패면 LLMUnavailable."""
+def reply(message: str, conversation_id: str | None) -> tuple[str, str, list[dict]]:
+    """(conversation_id, answer, 부른 도구 목록). 없는 대화면 ConversationNotFound,
+    LLM 실패면 LLMUnavailable."""
     history: list[dict] = []
     if conversation_id:
         conv = store.get_conversation(conversation_id)
@@ -88,14 +92,20 @@ def reply(message: str, conversation_id: str | None) -> tuple[str, str]:
 
     # 요약 계산(저장소 읽기)은 try 밖 — 저장소 오류를 「AI 응답 실패」로 잘못 알리지 않게
     system_prompt = build_system_prompt()
+    used: list[dict] = []
+
+    def record_and_run(name: str, arguments: dict) -> dict:
+        used.append({"name": name, "arguments": arguments})
+        return run_tool(name, arguments)
+
     try:
-        answer = provider.chat(system_prompt, history, message)
+        answer = provider.chat(system_prompt, history, message, tools=TOOLS, run_tool=record_and_run)
     except Exception as exc:  # 어떤 LLM 오류든 사용자에겐 「다시 시도」 한 가지라 하나로 묶는다
         raise LLMUnavailable(str(exc)) from exc
 
     turn = [{"role": "user", "content": message}, {"role": "assistant", "content": answer}]
     if conversation_id:
         store.append_messages(conversation_id, turn)
-        return conversation_id, answer
+        return conversation_id, answer, used
     conv = store.add_conversation(message.strip()[:TITLE_LENGTH], turn)
-    return conv["id"], answer
+    return conv["id"], answer, used

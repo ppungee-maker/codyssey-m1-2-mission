@@ -34,7 +34,7 @@ def test_chat_blank_message_is_422(client):
 
 
 class _Boom:
-    def chat(self, system_prompt, history, user_message):
+    def chat(self, system_prompt, history, user_message, **_):
         raise RuntimeError("upstream 500 sk-secret")
 
 
@@ -60,7 +60,7 @@ def test_history_sent_to_llm_is_capped(client, monkeypatch):
     seen = []
 
     class Spy:
-        def chat(self, system_prompt, history, user_message):
+        def chat(self, system_prompt, history, user_message, **_):
             seen.append(len(history))
             return "ok"
 
@@ -83,7 +83,7 @@ def test_long_answer_can_be_loaded_again(client, monkeypatch):
     """AI 답은 요청 상한(8000자)보다 길 수 있다 — 불러오기가 500 이 나면 안 된다."""
 
     class Wordy:
-        def chat(self, system_prompt, history, user_message):
+        def chat(self, system_prompt, history, user_message, **_):
             return "가" * 10_000
 
     monkeypatch.setattr("services.chat.provider", Wordy())
@@ -105,7 +105,7 @@ def test_full_conversation_is_409_and_unchanged(client, monkeypatch):
     called = []
 
     class Spy:
-        def chat(self, system_prompt, history, user_message):
+        def chat(self, system_prompt, history, user_message, **_):
             called.append(1)
             return "ok"
 
@@ -136,3 +136,67 @@ def test_many_short_messages_count_toward_the_limit(client, monkeypatch):
     conv = store.add_conversation("짧은 말 많이", [{"role": "user", "content": "a"}] * n)
     r = client.post("/api/chat", json={"message": "또", "conversation_id": conv["id"]})
     assert r.status_code == 409
+
+
+def test_tool_answers_a_specific_date(client):
+    """요약에 없는 「그날 값」 — mock 도 GPT 처럼 query_data 를 불러 답한다."""
+    r = client.post("/api/chat", json={"message": "2026-09-02 값은 얼마였어?"}).json()
+    assert r["tools_used"] == [
+        {"name": "query_data", "arguments": {"date_from": "2026-09-02", "date_to": "2026-09-02"}}
+    ]
+    assert "224.41" in r["answer"]
+
+
+def test_tool_recent_days_summary(client):
+    r = client.post("/api/chat", json={"message": "최근 30일 평균 알려줘"}).json()
+    assert r["tools_used"][0] == {"name": "get_summary", "arguments": {"days": 30}}
+    assert "최근 30일 22건" in r["answer"]
+
+
+def test_no_tool_for_plain_question(client):
+    assert client.post("/api/chat", json={"message": "요즘 추세가 어때?"}).json()["tools_used"] == []
+
+
+def test_openai_provider_runs_tool_loop(monkeypatch):
+    """OpenAI 응답을 흉내 내서, 도구 요청 → 실행 → 결과를 다시 보내 최종 답을 받는 왕복을 본다."""
+    from types import SimpleNamespace as NS
+
+    from llm.openai_provider import MAX_TOOL_ROUNDS, OpenAILLMProvider
+
+    sent = []
+
+    def fake_create(**kw):
+        sent.append(kw)
+        if len(sent) == 1:
+            call = NS(id="c1", function=NS(name="query_data", arguments='{"date_from":"2026-09-02","date_to":"2026-09-02"}'))
+            return NS(choices=[NS(message=NS(content=None, tool_calls=[call]))])
+        return NS(choices=[NS(message=NS(content="224.41 입니다", tool_calls=None))])
+
+    p = OpenAILLMProvider("sk-test")
+    monkeypatch.setattr(p._client.chat.completions, "create", fake_create)
+    calls = []
+    answer = p.chat("sys", [], "그날 값?", tools=[{"type": "function"}], run_tool=lambda n, a: calls.append((n, a)) or {"rows": [1]})
+    assert answer == "224.41 입니다"
+    assert calls == [("query_data", {"date_from": "2026-09-02", "date_to": "2026-09-02"})]
+    assert sent[1]["messages"][-1] == {"role": "tool", "tool_call_id": "c1", "content": '{"rows": [1]}'}
+    assert MAX_TOOL_ROUNDS >= 1
+
+
+def test_openai_provider_last_round_forbids_tools(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from llm.openai_provider import MAX_TOOL_ROUNDS, OpenAILLMProvider
+
+    sent = []
+
+    def always_tool(**kw):
+        sent.append(kw)
+        if kw.get("tool_choice") == "none":
+            return NS(choices=[NS(message=NS(content="끝", tool_calls=None))])
+        call = NS(id=f"c{len(sent)}", function=NS(name="get_summary", arguments="{}"))
+        return NS(choices=[NS(message=NS(content=None, tool_calls=[call]))])
+
+    p = OpenAILLMProvider("sk-test")
+    monkeypatch.setattr(p._client.chat.completions, "create", always_tool)
+    assert p.chat("sys", [], "?", tools=[{"type": "function"}], run_tool=lambda n, a: {}) == "끝"
+    assert len(sent) == MAX_TOOL_ROUNDS + 1 and sent[-1]["tool_choice"] == "none"
