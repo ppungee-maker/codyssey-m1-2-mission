@@ -27,3 +27,4 @@ def test_origins_env_trims_trailing_slash(monkeypatch):
 def test_seed_can_be_turned_off(monkeypatch):
     monkeypatch.setenv("SEED_ON_STARTUP", "false")
     assert Settings.load().seed_on_startup is False
+

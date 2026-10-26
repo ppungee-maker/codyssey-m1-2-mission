@@ -48,9 +48,7 @@ class MemoryStore(Store):
             row = self._data.get(data_id)
             if row is None:
                 return None
-            for k, v in fields.items():
-                if v is not None:
-                    row[k] = v
+            row.update(fields)
             return dict(row)
 
     def delete_data(self, data_id: str) -> bool:

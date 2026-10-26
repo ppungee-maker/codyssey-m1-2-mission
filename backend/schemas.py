@@ -36,16 +36,21 @@ class DataPointCreate(_Request):
 
 
 class DataPointUpdate(_Request):
-    """보낸 필드만 바꾼다. 아무것도 안 보내면 422."""
+    """보낸 필드만 바꾼다(안 보낸 필드는 그대로). memo 에 null 을 보내면 메모를 지운다.
+    아무것도 안 보내면 422, date·value 를 null 로 보내도 422."""
 
     date: DateField | None = None
     value: ValueField | None = None
     memo: MemoField = None
 
     @model_validator(mode="after")
-    def at_least_one(self) -> "DataPointUpdate":
-        if self.date is None and self.value is None and self.memo is None:
+    def check_fields(self) -> "DataPointUpdate":
+        sent = self.model_fields_set
+        if not sent:
             raise ValueError("바꿀 필드(date·value·memo)를 하나 이상 보내야 합니다")
+        for name in ("date", "value"):
+            if name in sent and getattr(self, name) is None:
+                raise ValueError(f"{name} 은 비울 수 없습니다")
         return self
 
 

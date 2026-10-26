@@ -32,9 +32,8 @@ def list_data() -> list[DataPoint]:
 
 @router.put("/{data_id}", response_model=DataPoint)
 def update_data(data_id: str, payload: DataPointUpdate) -> DataPoint:
-    row = store.update_data(
-        data_id, date=payload.date, value=payload.value, memo=payload.memo,
-    )
+    # 보낸 필드만 넘긴다 — 「안 보냄」(그대로)과 「memo: null」(지우기)을 구별하려고
+    row = store.update_data(data_id, **payload.model_dump(exclude_unset=True))
     if row is None:
         raise HTTPException(status_code=404, detail=f"데이터를 찾을 수 없습니다: {data_id}")
     return DataPoint(**row)

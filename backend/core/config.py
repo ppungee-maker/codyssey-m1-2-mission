@@ -21,6 +21,20 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
 LOCAL_ORIGINS = ("http://localhost:5500", "http://127.0.0.1:5500")
 
 
+def _positive_days(raw: str | None) -> int | None:
+    """SUMMARY_DAYS — 비우면 전체, 아니면 1 이상의 정수. 0·음수·글자는 서버가 뜨지 않게 한다
+    (0 을 「전체」로, 음수를 「0건」으로 조용히 바꿔 읽으면 설정과 다른 요약이 나온다)."""
+    if not raw or not raw.strip():
+        return None
+    try:
+        days = int(raw)
+    except ValueError:
+        days = 0
+    if days < 1:
+        raise ValueError(f"SUMMARY_DAYS 는 1 이상의 정수여야 합니다(지금: {raw!r})")
+    return days
+
+
 @dataclass
 class Settings:
     openai_api_key: str | None = None
@@ -43,7 +57,7 @@ class Settings:
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID") or None,
             cors_origins=origins,
             seed_on_startup=os.environ.get("SEED_ON_STARTUP", "true").lower() != "false",
-            summary_days=int(os.environ["SUMMARY_DAYS"]) if os.environ.get("SUMMARY_DAYS") else None,
+            summary_days=_positive_days(os.environ.get("SUMMARY_DAYS")),
         )
 
     @property

@@ -23,7 +23,8 @@ class Store(ABC):
     def get_data(self, data_id: str) -> dict | None: ...
 
     @abstractmethod
-    def update_data(self, data_id: str, **fields) -> dict | None: ...
+    def update_data(self, data_id: str, **fields) -> dict | None:
+        """넘긴 필드만 그 값으로 바꾼다(None 이면 None 으로). 없는 id 면 None."""
 
     @abstractmethod
     def delete_data(self, data_id: str) -> bool: ...
