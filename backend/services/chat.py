@@ -13,10 +13,13 @@ from __future__ import annotations
 from core.config import settings
 from llm import provider
 from repositories import store
+from schemas import CONVERSATION_MAX_BYTES, conversation_bytes
 from services.summary import summarize
 
 HISTORY_TURNS = 10  # 한 턴 = 질문 + 답 2개 메시지
 TITLE_LENGTH = 30
+ANSWER_MAX_TOKENS = 1000  # llm/openai_provider.py 가 이만큼으로 답을 자른다
+ANSWER_BYTES_BUDGET = ANSWER_MAX_TOKENS * 6  # 토큰 1개 ≈ 한글 1~2자(3~6바이트) — 넉넉히
 
 SYSTEM_PROMPT_TEMPLATE = """당신은 사용자의 개인 데이터를 이해하고 답하는 AI 비서입니다.
 아래는 사용자가 저장한 시계열 데이터의 요약입니다 — 이 정보를 참고해 답변하세요.
@@ -42,6 +45,10 @@ class ConversationNotFound(LookupError):
 
 class LLMUnavailable(RuntimeError):
     pass
+
+
+class ConversationFull(RuntimeError):
+    """대화 하나가 Firestore 문서 한도에 가까워졌다 — 새 대화로 이어 가야 한다."""
 
 
 def build_system_prompt() -> str:
@@ -72,10 +79,16 @@ def reply(message: str, conversation_id: str | None) -> tuple[str, str]:
         conv = store.get_conversation(conversation_id)
         if conv is None:
             raise ConversationNotFound(conversation_id)
+        # AI 를 부르기 **전에** 본다 — 답을 받고 나서 저장이 실패하면 답을 버리게 된다
+        size = conversation_bytes(conv["messages"]) + len(message.encode()) + ANSWER_BYTES_BUDGET
+        if size > CONVERSATION_MAX_BYTES:
+            raise ConversationFull(conversation_id)
         history = conv["messages"][-HISTORY_TURNS * 2 :]
 
+    # 요약 계산(저장소 읽기)은 try 밖 — 저장소 오류를 「AI 응답 실패」로 잘못 알리지 않게
+    system_prompt = build_system_prompt()
     try:
-        answer = provider.chat(build_system_prompt(), history, message)
+        answer = provider.chat(system_prompt, history, message)
     except Exception as exc:  # 어떤 LLM 오류든 사용자에겐 「다시 시도」 한 가지라 하나로 묶는다
         raise LLMUnavailable(str(exc)) from exc
 

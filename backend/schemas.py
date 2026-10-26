@@ -19,6 +19,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 MEMO_MAX = 200
 MESSAGE_MAX = 2000
 TITLE_MAX = 100
+# Firestore 문서 1개 한도는 1MiB 이고 대화는 메시지 배열을 문서 하나에 담는다 — 여유를 두고 900KB
+CONVERSATION_MAX_BYTES = 900_000
+
+
+def conversation_bytes(messages) -> int:
+    """메시지 본문의 UTF-8 크기 합(한글 1자 = 3바이트). dict·모델 둘 다 받는다."""
+    return sum(
+        len((m["content"] if isinstance(m, dict) else m.content).encode()) for m in messages
+    )
 
 DateField = Annotated[date_type, Field(ge=date_type(1900, 1, 1), le=date_type(2100, 12, 31))]
 ValueField = Annotated[float, Field(allow_inf_nan=False)]
@@ -77,8 +86,18 @@ class DataSummary(BaseModel):
 
 
 class MessageIn(_Request):
+    """요청으로 받는 메시지(POST /api/conversations) — 검증한다."""
+
     role: str = Field(pattern="^(user|assistant)$")
     content: str = Field(min_length=1, max_length=MESSAGE_MAX * 4)  # 답변은 질문보다 길 수 있다
+
+
+class Message(BaseModel):
+    """응답으로 내보내는 저장된 메시지 — 길이 검증을 걸지 않는다. AI 답은 요청 상한보다 길 수
+    있어서, 같은 모델을 쓰면 긴 답이 저장된 대화를 불러올 때 500 이 난다."""
+
+    role: str
+    content: str
 
 
 class ChatRequest(_Request):
@@ -103,11 +122,17 @@ class ConversationCreate(_Request):
     title: str | None = Field(None, max_length=TITLE_MAX)
     messages: list[MessageIn] = Field(default_factory=list, max_length=200)
 
+    @model_validator(mode="after")
+    def fits_one_document(self) -> "ConversationCreate":
+        if conversation_bytes(self.messages) > CONVERSATION_MAX_BYTES:
+            raise ValueError(f"메시지 합계가 너무 큽니다(최대 {CONVERSATION_MAX_BYTES:,}바이트)")
+        return self
+
 
 class Conversation(BaseModel):
     id: str
     title: str
-    messages: list[MessageIn]
+    messages: list[Message]
     created_at: datetime
     updated_at: datetime
 

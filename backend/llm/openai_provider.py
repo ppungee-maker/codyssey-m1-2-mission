@@ -22,6 +22,10 @@ class OpenAILLMProvider(LLMProvider):
         messages.append({"role": "user", "content": user_message})
 
         resp = self._client.chat.completions.create(
-            model=self._model, messages=messages, temperature=0.4,
+            model=self._model,
+            messages=messages,
+            temperature=0.4,
+            # 답 길이 상한 — 비용을 묶고, 대화 문서(Firestore 1MiB)가 답 하나로 커지지 않게
+            max_completion_tokens=1000,
         )
         return resp.choices[0].message.content or ""
