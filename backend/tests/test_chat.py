@@ -200,3 +200,15 @@ def test_openai_provider_last_round_forbids_tools(monkeypatch):
     monkeypatch.setattr(p._client.chat.completions, "create", always_tool)
     assert p.chat("sys", [], "?", tools=[{"type": "function"}], run_tool=lambda n, a: {}) == "끝"
     assert len(sent) == MAX_TOOL_ROUNDS + 1 and sent[-1]["tool_choice"] == "none"
+
+
+def test_non_object_tool_arguments_do_not_break_chat(client, monkeypatch):
+    class OddArgs:
+        def chat(self, system_prompt, history, user_message, tools=None, run_tool=None):
+            result = run_tool("query_data", [])  # GPT 가 인자를 배열로 보낸 경우
+            return f"결과: {result}"
+
+    monkeypatch.setattr("services.chat.provider", OddArgs())
+    r = client.post("/api/chat", json={"message": "?"})
+    assert r.status_code == 200
+    assert r.json()["tools_used"] == [] and "JSON 객체" in r.json()["answer"]

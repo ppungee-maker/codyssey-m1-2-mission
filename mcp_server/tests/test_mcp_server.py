@@ -59,3 +59,17 @@ def test_backend_error_is_reported():
 
     with pytest.raises(ToolError, match="422.*memo"):
         asyncio.run(server.mcp.call_tool("add_data", {"date": "2026-10-01", "value": 1, "memo": "가" * 201}))
+
+
+@pytest.mark.parametrize(
+    "name,args,match",
+    [
+        ("get_summary", {"days": 0}, "1~3650"),
+        ("query_data", {"date_from": "2026-09-02", "date_to": "2026-09-01"}, "늦습니다"),
+    ],
+)
+def test_bad_arguments_are_tool_errors(name, args, match):
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    with pytest.raises(ToolError, match=match):
+        asyncio.run(server.mcp.call_tool(name, args))

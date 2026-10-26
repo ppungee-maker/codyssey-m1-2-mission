@@ -49,12 +49,17 @@ def _call(method: str, path: str, **kw) -> dict | list:
 @mcp.tool()
 def get_summary(days: int | None = None) -> dict:
     """데이터 요약 — 건수·기간·평균·최고·최저·표준편차·마지막 값·추세. days 를 주면 최근 N일만."""
-    return _call("GET", "/api/data/summary", params={"days": days} if days else None)
+    if days is not None and not 1 <= days <= 3650:
+        raise ToolError("days 는 1~3650 사이여야 합니다")
+    return _call("GET", "/api/data/summary", params={"days": days} if days is not None else None)
 
 
 @mcp.tool()
 def query_data(date_from: date, date_to: date) -> dict:
     """날짜 범위(양 끝 포함)의 값 {date, value, memo} — 날짜순, 최대 100건."""
+    if date_from > date_to:
+        # 「0건」 으로 답하면 AI 가 「데이터가 없다」 로 오해한다 — 인자 오류로 알린다
+        raise ToolError("date_from 이 date_to 보다 늦습니다")
     rows = [
         {"date": r["date"], "value": r["value"], "memo": r.get("memo")}
         for r in _call("GET", "/api/data")

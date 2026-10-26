@@ -95,6 +95,10 @@ def reply(message: str, conversation_id: str | None) -> tuple[str, str, list[dic
     used: list[dict] = []
 
     def record_and_run(name: str, arguments: dict) -> dict:
+        # AI 가 인자를 JSON 객체가 아닌 것([] 등)으로 보내면 기록하지 않고 오류로 돌려준다 —
+        # 기록하면 응답 모델(arguments: dict) 검증에서 500 이 난다
+        if not isinstance(arguments, dict):
+            return {"error": "인자는 JSON 객체여야 합니다"}
         used.append({"name": name, "arguments": arguments})
         return run_tool(name, arguments)
 
