@@ -65,7 +65,7 @@ def test_update_rejects_null_date_or_value(client):
     assert client.put(f"/api/data/{data_id}", json={"date": None}).status_code == 422
 
 
-@pytest.mark.parametrize("bad_id", ["a.b", "d1;drop", "x" * 65, "%24where", "가나다"])
+@pytest.mark.parametrize("bad_id", ["a.b", "d1;drop", "x" * 65, "%24where", "가나다", "__name__"])
 def test_ids_outside_pattern_never_reach_the_store(client, monkeypatch, bad_id):
     """문서 id 는 영문·숫자·_- 만 — 저장소(Firestore 문서 경로)에 닿기 전에 422."""
     from repositories import store

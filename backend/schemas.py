@@ -19,7 +19,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 # 문서 id 로 받는 글자 — Firestore 자동 id(영문·숫자 20자)와 메모리 저장소 id(d1·c1)만 통과.
 # 「/」「..」 같은 글자로 다른 컬렉션 경로를 가리키는 입력을 저장소에 닿기 전에 막는다.
-ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+# 첫 글자는 「_」 금지 — Firestore 는 __이름__ 꼴 id 를 예약어로 거부해서 422 대신 500 이 난다.
+ID_PATTERN = r"^[A-Za-z0-9-][A-Za-z0-9_-]{0,63}$"
 IdPath = Annotated[str, Path(pattern=ID_PATTERN, description="문서 id")]
 
 MEMO_MAX = 200

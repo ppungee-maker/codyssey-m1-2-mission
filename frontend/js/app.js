@@ -9,6 +9,7 @@
 // 넣으면 메모에 <img onerror=…> 같은 글을 저장했을 때 그 스크립트가 실행된다.
 
 let currentConversationId = null;
+let dataLoaded = false; // 첫 데이터 목록을 받았는가 — 그 전엔 그래프를 그리지 않는다(스켈레톤 유지)
 // 화면에 띄운 대화가 바뀔 때마다 1씩 올린다. 요청을 보낼 때의 값을 기억해 두었다가, 응답이
 // 왔을 때 값이 달라졌으면(그새 새 대화·다른 대화로 옮김) 그 응답으로 화면을 바꾸지 않는다.
 let viewGeneration = 0;
@@ -63,6 +64,8 @@ async function refreshSummary() {
 let chartDays = 90;
 
 function renderChart() {
+  // 첫 목록이 오기 전(기간 버튼·창 크기 변경)엔 「데이터 없음」 을 그리지 않고 스켈레톤을 둔다
+  if (!dataLoaded) return;
   $("chart").classList.remove("skeleton-box");
   const rows = lastRows;
   let points = rows.map((r) => ({ date: r.date, value: r.value }));
@@ -161,6 +164,7 @@ function cancelEdit() {
 
 async function refreshDataList() {
   lastRows = await api.listData();
+  dataLoaded = true;
   renderDataList();
   renderChart();
   return lastRows;
@@ -369,8 +373,19 @@ function today() {
     await Promise.all([refreshData(), refreshConversationList()]);
   } catch (err) {
     showError(err);
+    clearSkeletons();
   } finally {
     clearTimeout(notice);
     $("waking").hidden = true;
   }
 })();
+
+// 첫 불러오기가 실패하면 반짝이는 자리를 「불러오지 못함」 으로 바꾼다 — 계속 반짝이면 아직 기다리는 줄 안다
+function clearSkeletons() {
+  document.querySelectorAll(".summary-card .skeleton").forEach((n) => {
+    n.classList.remove("skeleton");
+    n.textContent = "-";
+  });
+  $("chart").classList.remove("skeleton-box");
+  if (!dataLoaded) $("data-list").replaceChildren(el("li", { class: "hint empty" }, "데이터를 불러오지 못했습니다"));
+}
