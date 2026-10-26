@@ -9,6 +9,9 @@
 // 넣으면 메모에 <img onerror=…> 같은 글을 저장했을 때 그 스크립트가 실행된다.
 
 let currentConversationId = null;
+// 화면에 띄운 대화가 바뀔 때마다 1씩 올린다. 요청을 보낼 때의 값을 기억해 두었다가, 응답이
+// 왔을 때 값이 달라졌으면(그새 새 대화·다른 대화로 옮김) 그 응답으로 화면을 바꾸지 않는다.
+let viewGeneration = 0;
 
 const $ = (id) => document.getElementById(id);
 
@@ -227,7 +230,9 @@ function bubble(role, content) {
 }
 
 async function loadConversation(id) {
+  const generation = ++viewGeneration;
   const conv = await api.getConversation(id);
+  if (generation !== viewGeneration) return; // 그새 다른 대화를 눌렀다
   currentConversationId = conv.id;
   $("messages").replaceChildren(...conv.messages.map((m) => bubble(m.role, m.content)));
   scrollMessages();
@@ -235,6 +240,7 @@ async function loadConversation(id) {
 }
 
 function startNewChat() {
+  viewGeneration++;
   currentConversationId = null;
   $("messages").replaceChildren();
   refreshConversationList().catch(showError);
@@ -266,10 +272,15 @@ $("chat-form").addEventListener("submit", async (e) => {
     loading.textContent = "생각하는 중... 서버가 깨어나는 중이면 1분쯤 걸릴 수 있어요.";
   }, 6000);
 
+  const generation = viewGeneration;
   try {
     const resp = await api.chat(message, currentConversationId);
-    currentConversationId = resp.conversation_id;
-    loading.replaceWith(bubble("assistant", resp.answer));
+    // 기다리는 동안 다른 대화로 옮겼으면 답은 서버의 원래 대화에 저장돼 있다 — 지금 화면엔
+    // 넣지 않고 목록(메시지 수)만 갱신한다. 넣으면 다음 질문이 엉뚱한 대화로 간다.
+    if (generation === viewGeneration) {
+      currentConversationId = resp.conversation_id;
+      loading.replaceWith(bubble("assistant", resp.answer));
+    }
     await refreshConversationList();
   } catch (err) {
     loading.textContent = `오류: ${err.message}`;
