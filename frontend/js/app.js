@@ -47,6 +47,8 @@ const guarded = (fn) => async (...args) => {
 // --- 데이터 요약 ---
 async function refreshSummary() {
   const s = await api.summary();
+  // 처음 불러오는 동안 보이던 회색 자리(스켈레톤)를 걷어 낸다
+  document.querySelectorAll(".summary-card .skeleton").forEach((n) => n.classList.remove("skeleton"));
   $("s-count").textContent = `${s.count}건`;
   $("s-period").textContent = s.date_from ? `${s.date_from} ~ ${s.date_to}` : "-";
   $("s-mean").textContent = s.mean != null ? s.mean.toFixed(2) : "-";
@@ -61,6 +63,7 @@ async function refreshSummary() {
 let chartDays = 90;
 
 function renderChart() {
+  $("chart").classList.remove("skeleton-box");
   const rows = lastRows;
   let points = rows.map((r) => ({ date: r.date, value: r.value }));
   if (chartDays && points.length) {

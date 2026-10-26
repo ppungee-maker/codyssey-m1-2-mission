@@ -23,12 +23,12 @@
   <p class="error" id="error" role="alert" hidden></p>
 
   <div class="summary-bar" id="summary-bar">
-    <div class="summary-card"><div class="label">데이터 건수</div><div class="value" id="s-count">-</div></div>
-    <div class="summary-card"><div class="label">기간</div><div class="value" id="s-period">-</div></div>
-    <div class="summary-card"><div class="label">평균</div><div class="value" id="s-mean">-</div></div>
-    <div class="summary-card"><div class="label">최고 / 최저</div><div class="value" id="s-maxmin">-</div></div>
-    <div class="summary-card"><div class="label">표준편차</div><div class="value" id="s-stdev">-</div></div>
-    <div class="summary-card"><div class="label">추세</div><div class="value" id="s-trend">-</div></div>
+    <div class="summary-card"><div class="label">데이터 건수</div><div class="value skeleton" id="s-count">-</div></div>
+    <div class="summary-card"><div class="label">기간</div><div class="value skeleton" id="s-period">-</div></div>
+    <div class="summary-card"><div class="label">평균</div><div class="value skeleton" id="s-mean">-</div></div>
+    <div class="summary-card"><div class="label">최고 / 최저</div><div class="value skeleton" id="s-maxmin">-</div></div>
+    <div class="summary-card"><div class="label">표준편차</div><div class="value skeleton" id="s-stdev">-</div></div>
+    <div class="summary-card"><div class="label">추세</div><div class="value skeleton" id="s-trend">-</div></div>
   </div>
 
   <section class="panel chart-panel">
@@ -40,7 +40,7 @@
         <button type="button" data-days="0">전체</button>
       </div>
     </div>
-    <svg id="chart" role="img" aria-label="데이터 값 추이 선 그래프"></svg>
+    <svg id="chart" class="skeleton-box" role="img" aria-label="데이터 값 추이 선 그래프"></svg>
   </section>
 
   <div class="grid">
@@ -68,7 +68,9 @@
         <input id="data-memo" type="text" maxlength="200" placeholder="메모 (선택)">
         <button type="submit">추가</button>
       </form>
-      <ul id="data-list"></ul>
+      <ul id="data-list">
+        <li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>
+      </ul>
       <button id="data-more" type="button" class="more" hidden>더 보기</button>
       <p class="hint" id="data-count-hint"></p>
     </div>
