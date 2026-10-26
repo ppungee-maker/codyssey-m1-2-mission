@@ -17,3 +17,11 @@ def test_conversation_crud(client):
 def test_conversation_rejects_unknown_role(client):
     r = client.post("/api/conversations", json={"messages": [{"role": "system", "content": "x"}]})
     assert r.status_code == 422
+
+
+def test_conversation_too_big_for_one_document(client):
+    from schemas import CONVERSATION_MAX_BYTES
+
+    n = CONVERSATION_MAX_BYTES // 21000 + 1  # 7000자 × 3바이트
+    msgs = [{"role": "user", "content": "가" * 7000}] * n
+    assert client.post("/api/conversations", json={"messages": msgs}).status_code == 422
