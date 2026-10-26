@@ -52,23 +52,77 @@ async function refreshSummary() {
 }
 
 // --- 데이터 관리(CRUD) ---
-const DATA_SHOWN = 15;
+// 최근 것부터 PAGE 건씩 보여 준다(시드만 502건). 「더 보기」로 늘린다.
+const PAGE = 15;
+let shown = PAGE;
+let editingId = null; // 지금 수정 중인 행 — 한 번에 하나만
 
-async function refreshDataList() {
-  const rows = await api.listData();
-  const recent = rows.slice(-DATA_SHOWN).reverse();
-  $("data-list").replaceChildren(
-    ...recent.map((r) =>
-      el(
-        "li",
-        {},
-        el("span", {}, `${r.date} · ${r.value}${r.memo ? ` · ${r.memo}` : ""}`),
-        el("button", { type: "button", onclick: guarded(() => deleteData(r.id)) }, "삭제"),
-      ),
+function viewRow(r) {
+  return el(
+    "li",
+    {},
+    el("span", { class: "row-text" }, `${r.date} · ${r.value}${r.memo ? ` · ${r.memo}` : ""}`),
+    el(
+      "span",
+      { class: "row-actions" },
+      el("button", { type: "button", onclick: () => startEdit(r.id) }, "수정"),
+      el("button", { type: "button", onclick: guarded(() => deleteData(r.id)) }, "삭제"),
     ),
   );
-  $("data-count-hint").textContent = `전체 ${rows.length}건 중 최근 ${recent.length}건 표시`;
-  return rows;
+}
+
+function editRow(r) {
+  const date = el("input", { type: "date", value: r.date, required: "", "aria-label": "날짜" });
+  const value = el("input", { type: "number", step: "any", value: String(r.value), required: "", "aria-label": "값" });
+  const memo = el("input", { type: "text", value: r.memo ?? "", maxlength: "200", placeholder: "메모", "aria-label": "메모" });
+  const form = el(
+    "form",
+    {
+      class: "edit-form",
+      onsubmit: guarded(async (e) => {
+        e.preventDefault();
+        await api.updateData(r.id, { date: date.value, value: Number(value.value), memo: memo.value.trim() });
+        editingId = null;
+        await refreshData();
+      }),
+    },
+    date,
+    value,
+    memo,
+    el(
+      "span",
+      { class: "row-actions" },
+      el("button", { type: "submit" }, "저장"),
+      el("button", { type: "button", onclick: () => cancelEdit() }, "취소"),
+    ),
+  );
+  return el("li", { class: "editing" }, form);
+}
+
+let lastRows = [];
+
+function renderDataList() {
+  const recent = lastRows.slice(-shown).reverse();
+  $("data-list").replaceChildren(...recent.map((r) => (r.id === editingId ? editRow(r) : viewRow(r))));
+  $("data-count-hint").textContent = `전체 ${lastRows.length}건 중 최근 ${recent.length}건 표시`;
+  $("data-more").hidden = recent.length >= lastRows.length;
+}
+
+function startEdit(id) {
+  editingId = id;
+  renderDataList();
+  $("data-list").querySelector(".editing input")?.focus();
+}
+
+function cancelEdit() {
+  editingId = null;
+  renderDataList();
+}
+
+async function refreshDataList() {
+  lastRows = await api.listData();
+  renderDataList();
+  return lastRows;
 }
 
 async function refreshData() {
@@ -76,9 +130,15 @@ async function refreshData() {
 }
 
 async function deleteData(id) {
+  if (!confirm("이 데이터를 삭제할까요?")) return;
   await api.deleteData(id);
   await refreshData();
 }
+
+$("data-more").addEventListener("click", () => {
+  shown += PAGE;
+  renderDataList();
+});
 
 $("data-form").addEventListener(
   "submit",
