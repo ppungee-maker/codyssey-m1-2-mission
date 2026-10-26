@@ -1,6 +1,6 @@
-from ..config import settings
+from core.config import settings
 from .base import LLMProvider
-from .mock_provider import MockLLMProvider
+from .mock import MockLLMProvider
 
 
 def build_provider() -> LLMProvider:

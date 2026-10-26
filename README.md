@@ -40,7 +40,7 @@
 [`docs/00-실행가이드.md`](docs/00-실행가이드.md) 참고. 요약하면:
 
 ```bash
-cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
+cd backend && pip install -r requirements.txt && uvicorn main:app --reload
 cd frontend && python3 -m http.server 5500   # 새 터미널
 ```
 

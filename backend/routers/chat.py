@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from ..ai import provider
-from ..config import settings
-from ..models import ChatRequest, ChatResponse
-from ..storage import store
-from .data import get_summary
+from llm import provider
+from core.config import settings
+from schemas import ChatRequest, ChatResponse
+from repositories import store
+from routers.data import get_summary
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 

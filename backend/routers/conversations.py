@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from ..models import Conversation, ConversationCreate, ConversationSummary
-from ..storage import store
+from schemas import Conversation, ConversationCreate, ConversationSummary
+from repositories import store
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 

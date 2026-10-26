@@ -3,7 +3,7 @@
 갖고 있어야 한다는 요구사항을 충족하기 위한 초기 적재 스크립트.
 
 실행:
-    python seed_data.py
+    python seed.py
 """
 
 from __future__ import annotations
@@ -12,9 +12,9 @@ import csv
 from datetime import date as date_type
 from pathlib import Path
 
-from app.storage.base import Store
+from repositories.base import Store
 
-CSV_PATH = Path(__file__).resolve().parent / "seed_nvda_daily.csv"
+CSV_PATH = Path(__file__).resolve().parent / "data" / "seed_nvda_daily.csv"
 
 
 def seed_if_empty(store: Store) -> int:
@@ -35,7 +35,7 @@ def seed_if_empty(store: Store) -> int:
 
 
 def main() -> None:
-    from app.storage import store  # 지연 import — 앱 시작 시점의 store를 그대로 씀
+    from repositories import store  # 지연 import — 앱 시작 시점의 store를 그대로 씀
 
     count = seed_if_empty(store)
     if count:

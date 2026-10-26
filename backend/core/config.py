@@ -35,7 +35,6 @@ class Settings:
     firebase_credentials_json: str | None = None
     firebase_project_id: str | None = None
     cors_origins: list[str] = None
-    seed_data_path: str = "seed_nvda_daily.csv"
 
     @classmethod
     def load(cls) -> "Settings":

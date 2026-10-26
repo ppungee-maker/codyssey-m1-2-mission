@@ -1,7 +1,7 @@
 """FastAPI 앱 진입점 — CORS 설정 + 라우터 등록.
 
 로컬 실행:
-    uvicorn app.main:app --reload
+    uvicorn main:app --reload
 Swagger UI: http://127.0.0.1:8000/docs
 """
 
@@ -10,9 +10,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import settings
-from .routers import chat, conversations, data
-from .storage import store
+from core.config import settings
+from routers import chat, conversations, data
+from repositories import store
 
 app = FastAPI(
     title="AI 비서 API",
@@ -39,7 +39,7 @@ def seed_on_startup() -> None:
     앱을 켜자마자 CRUD/요약/챗봇을 바로 시연할 수 있게 자동으로 시딩한다.
     Firestore(배포 환경)는 데이터가 영속되므로 이미 있으면 건너뛴다.
     """
-    from seed_data import seed_if_empty
+    from seed import seed_if_empty
 
     count = seed_if_empty(store)
     if count:
