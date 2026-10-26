@@ -48,8 +48,34 @@ async function refreshSummary() {
   $("s-period").textContent = s.date_from ? `${s.date_from} ~ ${s.date_to}` : "-";
   $("s-mean").textContent = s.mean != null ? s.mean.toFixed(2) : "-";
   $("s-maxmin").textContent = s.max != null ? `${s.max.toFixed(1)} / ${s.min.toFixed(1)}` : "-";
+  $("s-stdev").textContent = s.stdev != null ? s.stdev.toFixed(2) : "-";
   $("s-trend").textContent = s.trend;
+  $("s-trend").title = s.trend_detail;
 }
+
+// --- 보너스: 추이 그래프 ---
+// 기간 버튼은 그래프 범위만 바꾼다(마지막 데이터 날짜 기준 최근 N일, 0 = 전체).
+let chartDays = 90;
+
+function renderChart() {
+  const rows = lastRows;
+  let points = rows.map((r) => ({ date: r.date, value: r.value }));
+  if (chartDays && points.length) {
+    const last = new Date(points.at(-1).date);
+    const start = new Date(last);
+    start.setDate(start.getDate() - (chartDays - 1));
+    points = points.filter((p) => new Date(p.date) >= start);
+  }
+  drawLineChart($("chart"), points);
+}
+
+document.querySelectorAll(".range button").forEach((btn) =>
+  btn.addEventListener("click", () => {
+    chartDays = Number(btn.dataset.days);
+    document.querySelectorAll(".range button").forEach((b) => b.classList.toggle("active", b === btn));
+    renderChart();
+  }),
+);
 
 // --- 데이터 관리(CRUD) ---
 // 최근 것부터 PAGE 건씩 보여 준다(시드만 502건). 「더 보기」로 늘린다.
@@ -122,6 +148,7 @@ function cancelEdit() {
 async function refreshDataList() {
   lastRows = await api.listData();
   renderDataList();
+  renderChart();
   return lastRows;
 }
 
