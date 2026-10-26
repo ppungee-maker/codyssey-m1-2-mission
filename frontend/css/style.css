@@ -215,3 +215,20 @@ header h1 { font-size: 1.3rem; margin: 0; }
   #data-list { max-height: none; }
   #data-list button, #conversation-list button.del { padding: 6px 8px; }
 }
+
+/* 보너스: 추이 그래프 */
+.chart-panel { margin-bottom: 16px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; }
+.range { display: flex; gap: 4px; }
+.range button {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem;
+}
+.range button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+#chart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-label { fill: var(--muted); font-size: 11px; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.chart-area { fill: var(--accent); opacity: 0.08; }
+.chart-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.chart-tip { fill: var(--text); font-size: 12px; font-weight: 600; }
