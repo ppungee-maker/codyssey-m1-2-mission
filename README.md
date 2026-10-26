@@ -1,4 +1,8 @@
-# 🤖 AI 비서 — 내 데이터를 아는 챗봇
+<p align="center"><img src="assets/logo.png" width="96" alt="AI 비서 로고 — 말풍선 안의 상승 그래프"></p>
+
+<h1 align="center">AI 비서 — 내 데이터를 아는 챗봇</h1>
+
+<p align="center"><img src="assets/hero.png" alt="로봇 비서가 그래프가 그려진 요약 쪽지를 읽고, 옆 노트북에 대화와 상승 그래프가 떠 있는 그림" width="100%"></p>
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688?logo=fastapi&logoColor=white)
@@ -18,6 +22,8 @@ ChatGPT 는 똑똑하지만 **내 가계부를 본 적이 없는 비서**다. �
 하고 얼버무린다.
 
 이 서비스는 질문할 때마다 비서에게 **요약 쪽지**를 먼저 건넨다.
+
+<p align="center"><img src="assets/eli5-note.png" width="70%" alt="사람이 그래프가 그려진 쪽지를 로봇 비서에게 건네고, 로봇 뒤 책장에는 두꺼운 기록장이 꽂혀 있는 그림"></p>
 
 > 📝 *「기록 502건, 2024-09-03 ~ 2026-09-02, 평균 165.38, 최고 235.74, 최저 94.31, 요즘은 증가 추세」*
 
@@ -47,7 +53,11 @@ ChatGPT 는 똑똑하지만 **내 가계부를 본 적이 없는 비서**다. �
 |---|---|---|
 | ![채팅](captures/01-채팅-요약반영.png) | ![데이터](captures/02-데이터-추가-수정.png) | ![대화](captures/03-대화-불러오기.png) |
 
-Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png) · 휴대폰: [`captures/05-모바일.png`](captures/05-모바일.png)
+| AI 가 도구로 찾아본 답 (보너스) | 다크 모드 (보너스) | 휴대폰 |
+|---|---|---|
+| ![도구 사용](captures/06-도구사용-답변.png) | ![다크 모드](captures/07-다크모드.png) | ![모바일](captures/05-모바일.png) |
+
+Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png)
 (캡처마다 무엇을 보여 주는지 — [`captures/README.md`](captures/README.md))
 
 ## 🗺️ 한눈에 보는 구조
@@ -410,6 +420,8 @@ sequenceDiagram
 
 > 🧒 **MCP = AI 앱용 USB 단자.** 이 단자를 꽂으면 Claude Desktop 같은 다른 AI 앱도 우리 비서의 도구를 쓸 수 있다.
 > 웹 화면이 「1번 창구」라면 MCP 는 「2번 창구」 — 창고(Firestore)는 하나라 어느 창구로 넣어도 같은 데이터다.
+
+<p align="center"><img src="assets/mcp-plug.png" width="70%" alt="왼쪽 웹 브라우저 창과 오른쪽 다른 AI 앱 창이 각각 플러그 케이블로 가운데 데이터 창고 하나에 연결된 그림"></p>
 
 `mcp_server/server.py` 는 MCP(Model Context Protocol) 서버다. MCP 클라이언트가 이 서버를 띄우면, 그 안의 AI 가 우리 백엔드 API 를
 도구로 쓴다.
