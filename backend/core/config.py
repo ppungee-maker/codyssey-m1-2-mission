@@ -17,25 +17,32 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
 
 
+# CORS_ORIGINS 를 비우면 로컬 개발 주소만 허용한다(전에는 전체 허용 *).
+LOCAL_ORIGINS = ("http://localhost:5500", "http://127.0.0.1:5500")
+
+
 @dataclass
 class Settings:
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     firebase_credentials_json: str | None = None
     firebase_project_id: str | None = None
-    cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = field(default_factory=lambda: list(LOCAL_ORIGINS))
     summary_days: int | None = None  # 요약 기본 범위(최근 N일). None = 전체
+    seed_on_startup: bool = True  # 저장소가 비어 있으면 시작할 때 시드 CSV 를 넣는다
 
     @classmethod
     def load(cls) -> "Settings":
-        origins_raw = os.environ.get("CORS_ORIGINS", "*")
-        origins = [o.strip() for o in origins_raw.split(",")] if origins_raw != "*" else ["*"]
+        # 끝의 「/」는 떼어 낸다 — 브라우저가 보내는 Origin 엔 슬래시가 없어서, 붙여 넣으면 CORS 가 막힌다
+        origins_raw = os.environ.get("CORS_ORIGINS") or ",".join(LOCAL_ORIGINS)
+        origins = [o.strip().rstrip("/") for o in origins_raw.split(",") if o.strip()]
         return cls(
             openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
             openai_model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
             firebase_credentials_json=os.environ.get("FIREBASE_CREDENTIALS_JSON") or None,
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID") or None,
             cors_origins=origins,
+            seed_on_startup=os.environ.get("SEED_ON_STARTUP", "true").lower() != "false",
             summary_days=int(os.environ["SUMMARY_DAYS"]) if os.environ.get("SUMMARY_DAYS") else None,
         )
 
