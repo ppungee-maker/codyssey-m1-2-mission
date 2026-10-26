@@ -64,10 +64,11 @@ function renderChart() {
   const rows = lastRows;
   let points = rows.map((r) => ({ date: r.date, value: r.value }));
   if (chartDays && points.length) {
-    const last = new Date(points.at(-1).date);
-    const start = new Date(last);
-    start.setDate(start.getDate() - (chartDays - 1));
-    points = points.filter((p) => new Date(p.date) >= start);
+    // "YYYY-MM-DD" 는 UTC 자정으로 읽힌다 — 날짜 빼기도 UTC 로 해야 서머타임 지역에서 첫날이 안 빠진다
+    const start = new Date(points.at(-1).date);
+    start.setUTCDate(start.getUTCDate() - (chartDays - 1));
+    const from = start.toISOString().slice(0, 10);
+    points = points.filter((p) => p.date >= from);
   }
   drawLineChart($("chart"), points);
 }
@@ -306,9 +307,12 @@ $("theme-toggle").addEventListener("click", () => {
 
 // --- 보너스: 데이터 CSV 내보내기 ---
 function csvCell(value) {
+  // 숫자는 그대로 — 음수(-2.5)에 ' 를 붙이면 엑셀이 글자로 읽는다
+  if (typeof value === "number") return String(value);
   const text = String(value ?? "");
-  // 엑셀이 =·+·-·@ 로 시작하는 칸을 수식으로 실행하지 않게 앞에 ' 를 붙인다
-  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  // 엑셀이 =·+·-·@ 로 시작하는 칸(앞에 공백·탭 같은 제어 문자가 있어도)을 수식으로 실행하지
+  // 않게 앞에 ' 를 붙인다
+  const safe = /^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text) ? `'${text}` : text;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
@@ -320,7 +324,8 @@ $("export-btn").addEventListener(
     const csv = "﻿" + lines.map((cols) => cols.map(csvCell).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     el("a", { href: url, download: "data_export.csv" }).click();
-    URL.revokeObjectURL(url);
+    // 브라우저가 내려받기를 시작한 뒤에 주소를 푼다 — 바로 풀면 일부 브라우저에서 빈 파일
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }),
 );
 
