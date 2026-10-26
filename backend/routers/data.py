@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from core.config import settings
 from repositories import store
-from schemas import DataPoint, DataPointCreate, DataPointUpdate, DataSummary
+from schemas import DataPoint, DataPointCreate, DataPointUpdate, DataSummary, IdPath
 from services.summary import summarize
 
 router = APIRouter(prefix="/api/data", tags=["data"])
@@ -31,7 +31,7 @@ def list_data() -> list[DataPoint]:
 
 
 @router.put("/{data_id}", response_model=DataPoint)
-def update_data(data_id: str, payload: DataPointUpdate) -> DataPoint:
+def update_data(data_id: IdPath, payload: DataPointUpdate) -> DataPoint:
     # 보낸 필드만 넘긴다 — 「안 보냄」(그대로)과 「memo: null」(지우기)을 구별하려고
     row = store.update_data(data_id, **payload.model_dump(exclude_unset=True))
     if row is None:
@@ -40,7 +40,7 @@ def update_data(data_id: str, payload: DataPointUpdate) -> DataPoint:
 
 
 @router.delete("/{data_id}", status_code=204)
-def delete_data(data_id: str) -> None:
+def delete_data(data_id: IdPath) -> None:
     if not store.delete_data(data_id):
         raise HTTPException(status_code=404, detail=f"데이터를 찾을 수 없습니다: {data_id}")
 

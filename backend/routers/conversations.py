@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from schemas import Conversation, ConversationCreate, ConversationSummary
+from schemas import Conversation, ConversationCreate, ConversationSummary, IdPath
 from repositories import store
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -37,7 +37,7 @@ def list_conversations() -> list[ConversationSummary]:
 
 
 @router.get("/{conv_id}", response_model=Conversation)
-def get_conversation(conv_id: str) -> Conversation:
+def get_conversation(conv_id: IdPath) -> Conversation:
     """대화 불러오기 — 특정 대화의 전체 messages를 반환(요구사항 6의 옵션 A)."""
     row = store.get_conversation(conv_id)
     if row is None:
@@ -46,6 +46,6 @@ def get_conversation(conv_id: str) -> Conversation:
 
 
 @router.delete("/{conv_id}", status_code=204)
-def delete_conversation(conv_id: str) -> None:
+def delete_conversation(conv_id: IdPath) -> None:
     if not store.delete_conversation(conv_id):
         raise HTTPException(status_code=404, detail=f"대화를 찾을 수 없습니다: {conv_id}")

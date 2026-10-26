@@ -14,7 +14,13 @@ from datetime import date as date_type
 from datetime import datetime
 from typing import Annotated
 
+from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# 문서 id 로 받는 글자 — Firestore 자동 id(영문·숫자 20자)와 메모리 저장소 id(d1·c1)만 통과.
+# 「/」「..」 같은 글자로 다른 컬렉션 경로를 가리키는 입력을 저장소에 닿기 전에 막는다.
+ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+IdPath = Annotated[str, Path(pattern=ID_PATTERN, description="문서 id")]
 
 MEMO_MAX = 200
 MESSAGE_MAX = 2000
@@ -109,7 +115,7 @@ class Message(BaseModel):
 
 class ChatRequest(_Request):
     message: str = Field(max_length=MESSAGE_MAX)
-    conversation_id: str | None = Field(None, max_length=100)
+    conversation_id: str | None = Field(None, pattern=ID_PATTERN)
 
     @field_validator("message")
     @classmethod

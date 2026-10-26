@@ -63,3 +63,17 @@ def test_update_rejects_null_date_or_value(client):
     data_id = client.get("/api/data").json()[0]["id"]
     assert client.put(f"/api/data/{data_id}", json={"value": None}).status_code == 422
     assert client.put(f"/api/data/{data_id}", json={"date": None}).status_code == 422
+
+
+@pytest.mark.parametrize("bad_id", ["a.b", "d1;drop", "x" * 65, "%24where", "가나다"])
+def test_ids_outside_pattern_never_reach_the_store(client, monkeypatch, bad_id):
+    """문서 id 는 영문·숫자·_- 만 — 저장소(Firestore 문서 경로)에 닿기 전에 422."""
+    from repositories import store
+
+    touched = []
+    monkeypatch.setattr(store, "delete_data", lambda i: touched.append(i) or False)
+    monkeypatch.setattr(store, "get_conversation", lambda i: touched.append(i))
+    assert client.delete(f"/api/data/{bad_id}").status_code == 422
+    assert client.get(f"/api/conversations/{bad_id}").status_code == 422
+    assert client.post("/api/chat", json={"message": "?", "conversation_id": bad_id}).status_code == 422
+    assert touched == []
