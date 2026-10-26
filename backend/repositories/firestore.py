@@ -1,7 +1,6 @@
 """실제 Firestore 저장소 — `FIREBASE_CREDENTIALS_JSON`(서비스 계정 키 JSON 문자열)이
-환경변수로 설정됐을 때만 선택된다. `firebase-admin`이 없거나 자격증명이 없으면
-`config.py`가 자동으로 `MemoryStore`를 대신 선택하므로, 이 파일은 로컬 개발 환경에선
-import조차 되지 않을 수 있다(요구사항: 컬렉션 구조 data/conversations).
+환경변수로 설정됐을 때만 선택된다. 자격증명이 없으면
+`repositories/__init__.py` 가 `MemoryStore` 를 고르고 이 파일은 import 되지 않는다.
 
 컬렉션 구조:
   data           문서 1개 = DataPoint 1건 (date, value, memo, created_at)
@@ -27,7 +26,15 @@ except ImportError as exc:  # pragma: no cover - 로컬 개발 기본 경로에�
 
 def _init_client(credentials_json: str, project_id: str | None):
     if not firebase_admin._apps:
-        cred = credentials.Certificate(json.loads(credentials_json))
+        try:
+            info = json.loads(credentials_json)
+        except json.JSONDecodeError as exc:
+            # 값은 비밀이라 메시지에 싣지 않는다 — 위치만
+            raise RuntimeError(
+                "FIREBASE_CREDENTIALS_JSON 이 JSON 이 아닙니다 — 서비스 계정 키 파일 **내용**을 "
+                f"한 줄로 넣어야 합니다(파일 경로 아님). 문제 위치: {exc.lineno}행 {exc.colno}열"
+            ) from None
+        cred = credentials.Certificate(info)
         firebase_admin.initialize_app(cred, {"projectId": project_id} if project_id else None)
     return firestore.client()
 
