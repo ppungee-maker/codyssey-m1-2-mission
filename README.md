@@ -53,9 +53,17 @@ ChatGPT 는 똑똑하지만 **내 가계부를 본 적이 없는 비서**다. �
 |---|---|---|
 | ![채팅](captures/01-채팅-요약반영.png) | ![데이터](captures/02-데이터-추가-수정.png) | ![대화](captures/03-대화-불러오기.png) |
 
-| AI 가 도구로 찾아본 답 (보너스) | 다크 모드 (보너스) | 휴대폰 |
-|---|---|---|
-| ![도구 사용](captures/06-도구사용-답변.png) | ![다크 모드](captures/07-다크모드.png) | ![모바일](captures/05-모바일.png) |
+| AI 가 도구로 찾아본 답 (보너스) | 다크 모드 (보너스) |
+|---|---|
+| ![도구 사용](captures/06-도구사용-답변.png) | ![다크 모드](captures/07-다크모드.png) |
+
+**휴대폰(390×844)** — 요약 카드 2열·그래프 다음에 채팅이 바로 오고, 대화 기록·데이터 관리는 그 아래로 쌓인다.
+
+<p align="center">
+  <img src="captures/05-모바일.png" width="240" alt="휴대폰 첫 화면 — 요약 카드 2열, 추이 그래프, 채팅 시작">
+  &nbsp;&nbsp;
+  <img src="captures/09-모바일-채팅.png" width="240" alt="휴대폰 채팅 화면 — 질문 2개와 답, 도구 사용 줄, 아래 대화 기록">
+</p>
 
 Swagger UI: [`captures/04-swagger-ui.png`](captures/04-swagger-ui.png)
 (캡처마다 무엇을 보여 주는지 — [`captures/README.md`](captures/README.md))
