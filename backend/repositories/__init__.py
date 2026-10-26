@@ -1,12 +1,12 @@
-from ..config import settings
+from core.config import settings
 from .base import Store
-from .memory_store import MemoryStore
+from .memory import MemoryStore
 
 
 def build_store() -> Store:
     if settings.use_real_storage:
         try:
-            from .firestore_store import FirestoreStore
+            from .firestore import FirestoreStore
 
             return FirestoreStore(settings.firebase_credentials_json, settings.firebase_project_id)
         except ImportError as exc:

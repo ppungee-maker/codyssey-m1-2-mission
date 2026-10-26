@@ -13,8 +13,8 @@ from statistics import mean as _mean
 
 from fastapi import APIRouter, HTTPException
 
-from ..models import DataPoint, DataPointCreate, DataPointUpdate, DataSummary
-from ..storage import store
+from schemas import DataPoint, DataPointCreate, DataPointUpdate, DataSummary
+from repositories import store
 
 router = APIRouter(prefix="/api/data", tags=["data"])
 

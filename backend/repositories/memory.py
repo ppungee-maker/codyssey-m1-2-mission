@@ -2,7 +2,7 @@
 API 전체를 실행·검증할 수 있게 하기 위한 기본값(Firestore 자격증명이 없을 때 자동 선택).
 
 프로세스가 끝나면 데이터가 사라지므로 배포 환경에서는 반드시 FIREBASE_CREDENTIALS_JSON을
-설정해 `firestore_store.py`가 선택되게 해야 한다.
+설정해 `firestore.py`가 선택되게 해야 한다.
 """
 
 from __future__ import annotations

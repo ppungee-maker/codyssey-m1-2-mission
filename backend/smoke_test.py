@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from main import app
 
 
 def check(label: str, condition: bool) -> None:

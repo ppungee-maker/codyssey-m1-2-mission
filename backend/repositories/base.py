@@ -1,6 +1,6 @@
 """저장소 인터페이스 — data 컬렉션 + conversations 컬렉션.
 
-실제 구현체 둘: `memory_store.py`(로컬 개발용, 기본값) / `firestore_store.py`(배포용).
+실제 구현체 둘: `memory.py`(로컬 개발용, 기본값) / `firestore.py`(배포용).
 두 구현체가 이 인터페이스만 지키면 라우터 코드는 어느 쪽을 쓰는지 몰라도 된다
 (A2 시리즈의 LLMProvider/ImageProvider와 동일한 설계 패턴).
 """
