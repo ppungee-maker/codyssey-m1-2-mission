@@ -138,7 +138,7 @@ cd backend && pip install -r requirements-dev.txt && pytest -q
 | GET | `/api/conversations` | 대화 목록(최근 수정순, 메시지 수 포함) |
 | GET | `/api/conversations/{id}` | 대화 불러오기(전체 메시지) |
 | DELETE | `/api/conversations/{id}` | 대화 삭제 |
-| POST | `/api/chat` | 질문 → 요약 주입 → AI 답 → 대화 자동 저장 |
+| POST | `/api/chat` | 질문 → 요약 주입 → AI 답(필요하면 도구 호출) → 대화 자동 저장, `tools_used` 에 부른 도구 |
 | GET | `/` | 상태 확인 — 지금 쓰는 저장소·AI |
 
 ## 프로젝트 구조
@@ -152,7 +152,8 @@ backend/
     data.py  conversations.py  chat.py
   services/            계산과 흐름: HTTP 를 모른다
     summary.py         요약 계산(요약 API 와 챗봇이 같이 씀)
-    chat.py            요약 → 시스템 프롬프트 → AI → 저장
+    chat.py            요약 → 시스템 프롬프트 → AI(도구 호출) → 저장
+    tools.py           AI 가 부르는 읽기 전용 도구 2개(보너스 Function Calling)
   repositories/        저장소 인터페이스 + Firestore·메모리 구현
   llm/                 AI 인터페이스 + OpenAI·mock 구현
   seed.py  data/seed_nvda_daily.csv
@@ -163,6 +164,8 @@ frontend/
   js/app.js            화면 상태와 이벤트
   js/chart.js          SVG 선 그래프
   scripts/write-config.js  Vercel 빌드 때 API_BASE_URL → config.js
+mcp_server/
+  server.py            MCP 서버 — 같은 API 를 Claude Desktop 등에서(보너스 멀티채널)
 render.yaml            Render 배포 설정
 ```
 
@@ -207,9 +210,9 @@ render.yaml            Render 배포 설정
 
 - 장점: 데이터 502건 원본 대신 몇 줄 요약만 보내서 **빠르고 싸다**. 데이터가 바뀌면 다음 질문에 바로 반영된다
   (테스트 `test_chat_sees_new_data`). 모델을 다시 학습시키지 않아도 된다.
-- 단점: 요약에 없는 것은 모른다(「3월 12일 값은?」에는 답할 수 없다). 그래서 프롬프트에 「요약에 없는 수치는
-  지어내지 말고 모른다고 하라」를 넣었다. 요약 기준을 잘못 고르면 답도 같이 틀린다. 이 한계는 AI 가 필요할 때
-  데이터 조회 함수를 직접 부르게 하는 Function Calling 으로 넘을 수 있다(보너스, 아직 안 함).
+- 단점: 요약에 없는 것은 모른다(「3월 12일 값은?」에는 답할 수 없다). 요약 기준을 잘못 고르면 답도 같이 틀린다.
+  그래서 AI 가 필요할 때 데이터를 직접 찾아보는 **Function Calling** 을 더했다(아래 「보너스」). 도구로도 못
+  찾은 수치는 지어내지 말고 모른다고 하라는 지시도 프롬프트에 있다.
 
 ### 요약(`/api/data/summary`)을 따로 둔 이유
 
@@ -257,8 +260,10 @@ render.yaml            Render 배포 설정
 | 오류 메시지로 키·내부 정보 노출 | AI 오류 원인은 서버 로그에만, 422 는 입력값을 되돌려 주지 않음 |
 | CSV 를 엑셀로 열 때 `=` 로 시작하는 칸이 수식으로 실행 | 내보낼 때 앞에 `'` |
 
-질문 안의 「이전 지시는 무시해」 같은 프롬프트 주입은 막지 못한다. 대신 AI 가 할 수 있는 일이 「답하기」뿐이라
-(데이터를 바꾸는 도구가 없다) 피해 범위가 답변 내용으로 한정된다.
+질문 안의 「이전 지시는 무시해」 같은 프롬프트 주입은 막지 못한다. 대신 웹 챗봇의 AI 가 부를 수 있는 도구는
+**읽기 전용**(요약·조회)뿐이라 데이터를 지우거나 바꿀 수 없고, 피해 범위가 답변 내용으로 한정된다. 도구 인자도
+서버가 다시 검증한다(날짜 형식·범위, 최대 100건). 쓰기 도구(add_data)는 사람이 도구 호출마다 허락하는 MCP
+쪽에만 열었다.
 
 ### 데이터가 늘거나 요약 기준이 바뀌면
 
@@ -278,4 +283,60 @@ render.yaml            Render 배포 설정
 | 시각화 | SVG 선 그래프(30일·90일·전체, 가리키면 값 표시) — 라이브러리 0 |
 | 데이터 내보내기 | CSV(엑셀 한글·수식 실행 대비) |
 | 다크 모드 | 토글, 브라우저에 기억 |
-| Function Calling + MCP/GPT Actions | 아직 안 함 |
+| Function Calling + MCP | 아래 — 웹 챗봇의 도구 호출 + MCP 서버(멀티채널) |
+
+### Function Calling — AI 가 도구를 불러 답한다
+
+`/api/chat` 이 OpenAI 에 질문과 함께 도구 2개(`backend/services/tools.py`)를 알려 준다. 둘 다 읽기 전용이다.
+
+| 도구 | 하는 일 | 언제 |
+|---|---|---|
+| `get_summary(days?)` | 요약 — 최근 N일로 범위를 바꿔서도 | 「최근 30일 평균은?」 |
+| `query_data(date_from, date_to)` | 날짜 범위의 원본 값(양 끝 포함, 최대 100건) | 「2026-09-02 값은?」 「8월 말 사흘 값」 |
+
+호출 흐름(`backend/llm/openai_provider.py`):
+
+```
+사용자: 「2026-09-02 값은 얼마였어?」
+  → /api/chat: 요약을 시스템 프롬프트에 넣고 tools=[get_summary, query_data] 로 GPT 호출
+  ← GPT: tool_calls = query_data({"date_from": "2026-09-02", "date_to": "2026-09-02"})
+  → 서버가 도구 실행(인자 검증 → 저장소 조회) → 결과 {"count": 1, "rows": [{"date": "2026-09-02", "value": 224.41, …}]}
+    를 role=tool 메시지로 GPT 에 돌려줌
+  ← GPT: 「2026년 9월 2일 값은 224.41 입니다.」 (최종 답)
+  → 질문·답을 대화에 저장, 응답 tools_used = [{"name": "query_data", "arguments": {…}}]
+```
+
+- 도구 왕복은 최대 3번, 마지막에는 `tool_choice="none"` 으로 글 답을 강제한다(도구만 부르다 끝나지 않게).
+- 인자가 틀리면 예외 대신 `{"error": …}` 를 돌려줘 GPT 가 읽고 고쳐 다시 부른다.
+- 화면은 답 아래에 「도구 사용: query_data(date_from=2026-09-02, date_to=2026-09-02)」 를 보여 준다.
+- 키가 없는 로컬에서도 mock 이 날짜·「최근 N일」 질문이면 같은 도구를 불러 흐름을 확인할 수 있다.
+
+### MCP 서버 — 같은 비서를 다른 채널에서
+
+`mcp_server/server.py` 는 MCP(Model Context Protocol) 서버다. Claude Desktop 같은 MCP 클라이언트가 이 서버를
+띄우면, 그 안의 AI 가 우리 백엔드 API 를 도구로 쓴다. 웹 화면과 같은 백엔드라 데이터·대화가 한 곳(Firestore)에 쌓인다.
+
+| MCP 도구 | 부르는 API |
+|---|---|
+| `get_summary(days?)` | `GET /api/data/summary` |
+| `query_data(date_from, date_to)` | `GET /api/data` (날짜로 거름) |
+| `add_data(date, value, memo?)` | `POST /api/data` — 쓰기는 MCP 클라이언트가 호출마다 사람 허락을 받는다 |
+| `ask(message)` | `POST /api/chat` — 웹 채팅과 같은 답, 대화 기록에도 남는다 |
+
+연결(Claude Desktop 설정 파일 `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ai-assistant": {
+      "command": "python",
+      "args": ["/저장소 경로/mcp_server/server.py"],
+      "env": { "API_BASE_URL": "https://m12-ai-assistant-api.onrender.com" }
+    }
+  }
+}
+```
+
+먼저 `pip install -r mcp_server/requirements.txt`. 연결하면 Claude 에게 「내 데이터 최근 30일 요약해 줘」,
+「오늘 값 231.5 추가해 줘」라고 말할 수 있다. 호출 흐름: Claude → (stdio) MCP 서버 → (HTTPS) 백엔드 API →
+Firestore·GPT → 결과가 거꾸로 Claude 에게. 테스트는 `mcp_server/tests/`(백엔드 앱에 직접 붙여 네트워크 없이).
