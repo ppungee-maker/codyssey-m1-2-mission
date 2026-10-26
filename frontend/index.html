@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI 비서 — 내 데이터를 아는 챗봇</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="app">
@@ -15,6 +15,8 @@
       <button id="theme-toggle" title="다크 모드 전환">다크 모드</button>
     </div>
   </header>
+
+  <p class="error" id="error" role="alert" hidden></p>
 
   <div class="summary-bar" id="summary-bar">
     <div class="summary-card"><div class="label">데이터 건수</div><div class="value" id="s-count">-</div></div>
@@ -27,7 +29,7 @@
   <div class="grid">
     <div class="panel" id="conversations-panel">
       <h2>대화 기록</h2>
-      <button id="new-chat-btn" style="width:100%;margin-bottom:10px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;">+ 새 대화</button>
+      <button id="new-chat-btn" type="button">+ 새 대화</button>
       <ul id="conversation-list"></ul>
       <p class="hint">대화를 클릭하면 이어서 대화할 수 있습니다.</p>
     </div>
@@ -56,6 +58,7 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

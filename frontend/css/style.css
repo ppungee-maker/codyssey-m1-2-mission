@@ -108,6 +108,11 @@ header h1 { font-size: 1.3rem; margin: 0; }
 }
 #conversation-list li:hover { background: var(--bubble-assistant); }
 #conversation-list li.active { background: var(--accent); color: white; }
+#new-chat-btn {
+  width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer;
+}
+#conversation-list li.empty { cursor: default; }
 #conversation-list button.del { background: none; border: none; color: inherit; cursor: pointer; opacity: 0.6; }
 
 /* 채팅 */
@@ -163,3 +168,13 @@ header h1 { font-size: 1.3rem; margin: 0; }
 #data-list button:hover { color: var(--accent); }
 
 .hint { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
+
+.error {
+  background: #fdecea;
+  color: #8a1c1c;
+  border: 1px solid #f5c2c0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+}
